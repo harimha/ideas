@@ -1,4 +1,4 @@
-from fdata.db.mysql.indicies.tables import *
+from fdata.db.mysql.indicies.tables import IndexOHLCV
 
 def kospi_c(sdate=None, edate=None):
     obj = IndexOHLCV()

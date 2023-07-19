@@ -1,4 +1,1 @@
-from fdata import api
-
-
-df = api.kospi_c()
+import fdata.api as api
