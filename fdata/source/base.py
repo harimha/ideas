@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from fdata.config.config import KosisConfig, EcosConfig
+from fdata.config.config import KosisConfig, EcosConfig, DartConfig
 from pandas.api.types import is_list_like
 from fdata.utils.exceptions import WebResponseError, EmptyDataFrame
 
@@ -62,6 +62,12 @@ class ECOS(Web, EcosConfig):
             parameters.append(params)
 
         return parameters
+
+class DART(Web, DartConfig):
+    def __init__(self):
+        super().__init__()
+        self._params = {"crtfc_key": self._apikey}
+
 
 
 

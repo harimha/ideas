@@ -8,12 +8,29 @@ from fdata.db.mysql.stock.tables import \
     StockForeignHoldings, StockPER_PBR_DIV
 from fdata.db.mysql.indicies.tables import \
     IndexInfo, IndexCode, IndexOHLCV, IndexPER_PBR_DIV, IndexComponents
+from fdata.db.mysql.finance.tables import CorpCode, StockBS, StockIS
+
+def initialize_fs_bs():
+    bs = StockBS()
+    sinfo = StockBasicInfo()
+    code_df = sinfo.read_db(["단축코드", "한글종목약명", "주식종류"])
+    code_df = code_df[code_df["주식종류"]=="보통주"]
+    code_df.drop("주식종류", axis=1, inplace=True)
+    code_df.index = range(len(code_df))
+    for i in range(len(code_df)):
+        short_code, stock_name = code_df.iloc[i]
+        execution_time = measure_execution_time(bs.store_data_period, stock_name, "2015", "2022")[1]
+        print(f"{i + 1}/{len(code_df)} {stock_name} is stored ({execution_time}sec)")
+
+def initialize_fs_is():
+    pass
 
 
 def initialize_code_db():
     icode = IndexCode()
     scode = StockCode()
-    for obj in [icode, scode]:
+    ccode = CorpCode()
+    for obj in [icode, scode, ccode]:
         exe_time = measure_execution_time(obj.store_data)[1]
         print(f"{obj.table_name} is initialized ({exe_time}sec)")
 
@@ -48,3 +65,4 @@ def initialize_index_db():
         print(f"{i}/{len(i_lst)} {index_name} is stored ({execution_time}sec)")
         i+=1
 
+initialize_fs_bs()

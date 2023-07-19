@@ -29,6 +29,7 @@ class KosisConfig(Configuration):
         self._secrets = self._get_secret()
         self._kosis_apikey = self._secrets["kosis_apikey"]
 
+
 class FisisConfig(Configuration):
     def __init__(self):
         self._secrets = self._get_secret()
@@ -40,3 +41,7 @@ class EcosConfig(Configuration):
         self._secrets = self._get_secret()
         self._apikey = self._secrets["ecos_apikey"]
 
+class DartConfig(Configuration):
+    def __init__(self):
+        self._secrets = self._get_secret()
+        self._apikey = self._secrets["dart_apikey"]

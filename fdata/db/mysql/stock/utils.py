@@ -51,7 +51,6 @@ def scode_to_name(short_code):
 
     return stock_name
 
-
 def get_listing_date(stock_name):
     '''
     :return: 주식 상장일 반환
@@ -63,5 +62,3 @@ def get_listing_date(stock_name):
     listing_date = df["상장일"][cond].iloc[0]
 
     return listing_date
-
-

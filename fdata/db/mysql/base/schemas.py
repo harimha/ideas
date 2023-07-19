@@ -56,3 +56,9 @@ class Stock(SchemaOperation):
         self.create_schema()
 
 
+class Finance(SchemaOperation):
+    def __init__(self):
+        super().__init__()
+        self.schema_name = "finance"
+        self.metadata.schema = self.schema_name
+        self.create_schema()
