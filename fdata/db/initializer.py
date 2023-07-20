@@ -23,7 +23,16 @@ def initialize_fs_bs():
         print(f"{i + 1}/{len(code_df)} {stock_name} is stored ({execution_time}sec)")
 
 def initialize_fs_is():
-    pass
+    stock_is = StockIS()
+    sinfo = StockBasicInfo()
+    code_df = sinfo.read_db(["단축코드", "한글종목약명", "시장구분", "주식종류"])
+    code_df = code_df[(code_df["주식종류"] == "보통주") & ((code_df["시장구분"] == "KOSPI") | (code_df["시장구분"] == "KOSDAQ"))]
+    code_df.drop(["주식종류","시장구분"], axis=1, inplace=True)
+    code_df.index = range(len(code_df))
+    for i in range(len(code_df)):
+        short_code, stock_name = code_df.iloc[i]
+        execution_time = measure_execution_time(stock_is.store_data_period, stock_name, "2015", "2022")[1]
+        print(f"{i + 1}/{len(code_df)} {stock_name} is stored ({execution_time}sec)")
 
 
 def initialize_code_db():
@@ -65,4 +74,4 @@ def initialize_index_db():
         print(f"{i}/{len(i_lst)} {index_name} is stored ({execution_time}sec)")
         i+=1
 
-initialize_fs_bs()
+initialize_fs_is()
