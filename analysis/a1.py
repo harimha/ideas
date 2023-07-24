@@ -23,34 +23,72 @@ df["ma_20"] = df["삼성전자"].rolling(20).mean()
 df["ma_60"] = df["삼성전자"].rolling(60).mean()
 df["20-60"] = df["ma_20"]-df["ma_60"]
 df = df.dropna()
-df["golden"] = 0
-golden_cond = ((df["20-60"]*df["20-60"].shift(1)<0) & (df["20-60"]>df["20-60"].shift(1)))
-df["golden"][golden_cond] = 1
 
-# t시점의 t+30간의 최대,최소,평균 수익률 측정
-max_list = []
-min_list = []
-avg_list = []
-for i in range(len(df)):
-    max_list.append(df["삼성전자"].iloc[i:30+i].max())
-    min_list.append(df["삼성전자"].iloc[i:30+i].min())
-    avg_list.append(df["삼성전자"].iloc[i:30+i].mean())
+for i in range(1,30,1):
+    df[f"t-{i}r"] = df[f"t-{i}"]/df["t-30"]-1
 
-df["max"] = max_list
-df["min"] = min_list
-df["avg"] = avg_list
-df["max_r"] = df["max"]/df["삼성전자"]-1
-df["min_r"] = df["min"]/df["삼성전자"]-1
-df["avg_r"] = df["avg"]/df["삼성전자"]-1
+df2 = df[["삼성전자"]].copy()
+for i in range(1,31,1):
+    df2[f"t+{i}"] = df2["삼성전자"].shift(-i)
+df2 = df2.dropna()
+
+max_val = df2.apply(max, axis=1)
+min_val = df2.apply(min, axis=1)
+
+df3 = pd.DataFrame({"close":df2["삼성전자"], "max":max_val, "min":min_val})
+df3["max_r"] = df3["max"]/df3["close"]-1
+df3["min_r"] = df3["min"]/df3["close"]-1
+df3["score"] = df3["max_r"]+df3["min_r"]
+
+df.head()
+df_m = df.join(df3["score"])
+df_m = df_m.dropna()
+df_m.columns
+X = df_m.iloc[:,31:-1]
+y = df_m["score"]
+price = df_m[["삼성전자"]]
+
+del min_val
+del max_val
+del df
+del df2
+del df3
+del df_m
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor as RFR
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
+
+# x_train = X.iloc[:int(0.8*len(X))]
+# x_test = X.iloc[int(0.8*len(X)):]
+# y_train = y.iloc[:int(0.8*len(y))]
+# y_test = y.iloc[int(0.8*len(y)):]
 
 
-df.groupby("golden")["max_r"].mean()[1]
-df.groupby("golden")["min_r"].mean()[1]
-df.groupby("golden")["avg_r"].mean()
+rfr = RFR()
+rfr.fit(x_train, y_train)
 
-df.groupby("golden")["avg_r"].unique()[1]
+# train data fit
+rfr.score(x_train, y_train)
+pred_y = rfr.predict(x_train)
+df_fit = pd.DataFrame({"y":y_train, "y_hat":pred_y})
+df_fit.to_csv("test4.csv",encoding="cp949")
 
 
+# test data fit
+rfr.score(x_test, y_test)
+pred_y = rfr.predict(x_test)
+df_fit = pd.DataFrame({"y":y_test, "y_hat":pred_y})
+df_fit.to_csv("test4.csv",encoding="cp949")
+df_price = price.join(df_fit)
+df_price.fillna(0)
+df_price.to_csv("test4.csv",encoding="cp949")
+
+
+
+df.to_csv("test.csv",encoding="cp949")
+df2.to_csv("test2.csv",encoding="cp949")
+df_fit.to_csv("test4.csv",encoding="cp949")
 
 df.to_csv("test.csv", encoding="cp949")
 
