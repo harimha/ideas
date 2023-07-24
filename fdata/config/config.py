@@ -1,7 +1,7 @@
 class Configuration():
     def _get_secret(self):
         secrets_dict = {}
-        # with open("fdata/config/secret/secrets.txt", "r") as f:
+        # with open("fdata/config/secret/secrets.txt.txt", "r") as f:
         with open("./secret/secrets.txt", "r") as f:
             for line in f.readlines():
                 key = line.strip().split("=", 1)[0].strip()
