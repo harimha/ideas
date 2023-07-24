@@ -20,24 +20,30 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-df = api.stock_c("삼성전자",sdate="20000101", edate="20080101")
-df.columns = ["일자", "종가"]
-
+data = api.stock_c("삼성전자",sdate="20000101", edate="20080101")
 
 # 골든크로스/데드크로스
 
-df["ma_20"] = df["종가"].rolling(20).mean()
-df["ma_60"] = df["종가"].rolling(60).mean()
-df = df.dropna()
-df.loc[df.index,"sig"] = "dead"
-cond_golden = df["ma_20"]>=df["ma_60"]
-df.loc[cond_golden, "sig"] = "golden"
-# switch point
-to_gold_switch_cond = ((df["sig"]=="golden") & (df["sig"].shift(1)=="dead"))
-to_dead_switch_cond = ((df["sig"]=="dead") & (df["sig"].shift(1)=="golden"))
-df.loc[to_gold_switch_cond, "switch"] = "to_gold"
-df.loc[to_dead_switch_cond, "switch"] = "to_dead"
-df = df.fillna("-")
+def golden_dead_cross(data, short:int, long:int):
+    df = data.copy()
+    df.columns = ["일자", "종가"]
+    df[f"ma_{short}"] = df["종가"].rolling(short).mean()
+    df[f"ma_{long}"] = df["종가"].rolling(long).mean()
+    df = df.dropna()
+
+    golden = df[f"ma_{short}"] >= df[f"ma_{long}"]
+    df.loc[golden, "state"] = 1
+    df = df.fillna(0)
+    buy_sig = ((df["state"] == 1) & (df["state"].shift(1) == 0))
+    sell_sig = ((df["state"] == 0) & (df["state"].shift(1) == 1))
+    df.loc[buy_sig, "signal"] = "buy"
+    df.loc[sell_sig, "signal"] = "sell"
+    df = df.fillna("hold")
+
+    return df
+
+
+
 
 # find MDD
 gold = {"index":[], "max":[], "min":[], "mean":[]}
