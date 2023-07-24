@@ -10,6 +10,7 @@ def stock_per(stock_name, sdate=None, edate=None):
 def stock_ohlcv(stock_name, sdate=None, edate=None):
     obj = db.stock.StockOHLCV_NAVER()
     df= obj.read_db(stock_name, obj.columns, sdate, edate)
+    df = df.set_index("일자")
 
     return df
 
