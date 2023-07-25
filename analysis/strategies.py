@@ -5,8 +5,16 @@ import plotly.graph_objects as go
 from analysis.indicator import sma
 from pandas.api.types import is_list_like
 
+class Singleton():
+    _instance = None
 
-class Strategy():
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(Singleton, cls).__new__(cls)
+        return cls._instance
+
+
+class Strategy(Singleton):
     def __init__(self, df, column):
         self.data = df.copy()
         self.column = column
@@ -146,9 +154,3 @@ class GoldenDeadCross(Strategy):
     def visualize(self):
         super().visualize()
 
-
-
-
-df = api.stock_ohlcv("삼성전자", "20010101", "20060101")
-st1 = GoldenDeadCross(df, "종가", 20, 60)
-st1.visualize()
