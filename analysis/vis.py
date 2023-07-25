@@ -7,7 +7,7 @@ import fdata.api as api
 from plotly.subplots import make_subplots
 import pandas as pd
 
-df = api.stock_ohlcv("현대차", "20010101", "20230101")
+df = api.stock_ohlcv("삼성전자", "20010101", "20090101")
 st1 = GoldenDeadCross(df, "종가", 20, 60)
 
 df = st1.data
