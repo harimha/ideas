@@ -141,28 +141,9 @@ class GoldenDeadCross(Strategy, Visualize):
 
 
 '''
-algorithm
-buy condition
-sell condition
-
-signal
-buy signal
-sell signal
-hold signal
-
-entry, exit
-buy entry, buy exit
-sell entry, sell exit
-
 case 
 buy 여러번 발생, sell 여러번 발생
 개수 1개가 아닌 분할 매수 
-
-4개의 signal
-buy_entry
-buy_exit
-sell_entry
-sell_exit
 
 보유 잔고
 수량, 단가
@@ -170,9 +151,6 @@ sell_exit
 결과
 청산수익
 
-
-state
-bull, bear, 
 '''
 
 

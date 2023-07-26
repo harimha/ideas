@@ -3,6 +3,7 @@ class Visualize():
         '''
         bar chart에서 투자 기간에 따른 bar width와 trade off 를 반환
         '''
+
         bar_width = df_result["date"].shift(-1) - df_result["date"]
         bar_width = bar_width.fillna(df_data.index[-1] - df_result["date"].iloc[-1])
         bar_width = bar_width.astype("int64") / 1000000  # microseconds 단위로 변환
