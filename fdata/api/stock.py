@@ -17,7 +17,8 @@ def stock_ohlcv(stock_name, sdate=None, edate=None):
 def stock_c(stock_name, sdate=None, edate=None):
     obj = db.stock.StockOHLCV_NAVER()
     df= obj.read_db(stock_name, ["일자", "종가"], sdate, edate)
-    df.columns = ["일자", stock_name]
+    df.columns = ["date", stock_name]
+    df= df.set_index("date")
 
     return df
 
