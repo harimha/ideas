@@ -1,6 +1,5 @@
 import datetime
 from plotly.subplots import make_subplots
-from analysis.utils import Singleton
 from abc import ABC, abstractmethod
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,13 +7,33 @@ from analysis.utils import Singleton
 
 
 class Algorithm(ABC):
+
     @abstractmethod
     def _set_sub_indicators(self):
         pass
 
     @abstractmethod
-    def _set_algorithm(self):
+    def _entry_buy_condition(self):
         pass
+
+    @abstractmethod
+    def _entry_sell_condition(self):
+        pass
+
+    @abstractmethod
+    def _exit_buy_condition(self):
+        pass
+
+    @abstractmethod
+    def _exit_sell_condition(self):
+        pass
+
+    def _set_algorithm(self):
+        self.data.dropna(inplace=True)
+        self.data["entry_buy_cond"] = self._entry_buy_condition()
+        self.data["entry_sell_cond"] = self._entry_sell_condition()
+        self.data["exit_buy_cond"] = self._exit_buy_condition()
+        self.data["exit_sell_cond"] = self._exit_sell_condition()
 
     def _set_positions(self):
         positions = []
@@ -88,7 +107,6 @@ class Algorithm(ABC):
                                    ay=-25,
                                    arrowwidth=1.5)
 
-
     def execute_algo(self):
         self.data = self.raw_data.copy()
         self._set_sub_indicators()
@@ -96,7 +114,7 @@ class Algorithm(ABC):
         self._set_positions()
         self._set_trading_signals()
 
-    def visualize_algo(self):
+    def visualize_algo(self, html=True):
         self.execute_algo()
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=self.data.index,
@@ -114,7 +132,12 @@ class Algorithm(ABC):
                                  name="short",
                                  marker={"size": 3, "opacity": 0.5}))
         self._vis_trading_signal(fig)
-        fig.show()
+
+        if html:
+            now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            fig.write_html(f"{now}.html")
+        else:
+            fig.show()
 
 
 class Backtest():
@@ -140,9 +163,9 @@ class Backtest():
         sell_c = self.sell_cost
         buy_c = self.buy_cost
         tl.loc[tl["position"] == "long", "rtrn"] = \
-            (tl["exit_value"]*(1-sell_c)-tl["entry_value"]*(1+buy_c)) / tl["entry_value"]
+            round((tl["exit_value"]*(1-sell_c)-tl["entry_value"]*(1+buy_c)) / tl["entry_value"],4)
         tl.loc[tl["position"] == "short", "rtrn"] = \
-            (tl["entry_value"]*(1-sell_c)-tl["exit_value"]*(1+buy_c)) / tl["exit_value"]
+            round((tl["entry_value"]*(1-sell_c)-tl["exit_value"]*(1+buy_c)) / tl["exit_value"],4)
 
     def _signal_side(self, sig_side="long"):
         if sig_side == "all":
@@ -300,11 +323,10 @@ class Visualization():
             fig.show()
 
 
-class Strategy(Algorithm, Backtest, Visualization, Singleton):
+class Strategy(Algorithm, Backtest, Visualization):
     def __init__(self, df, column):
         self.raw_data = df[[column]].copy()
         self.data = df[[column]].copy()
         self.column = column
         self._set_cost(tax=0.002, sell_fee=0.00015, buy_fee=0.00015, slippage=0)
-        self.execute_algo()
 
