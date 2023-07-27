@@ -1,7 +1,7 @@
 import pandas as pd
 import fdata.api as api
 from analysis.mixin import Strategy
-from analysis.indicator import sma
+from analysis.indicators import sma
 from analysis.utils import Singleton
 
 
@@ -84,10 +84,6 @@ class Mix1(GoldenDeadCross, BollingerBand):
         cond = GoldenDeadCross._exit_sell_condition(self)
         return cond
 
-
-
-    
-    
 
 # 2개 이상의 지표 겹쳐보기
 # entry area, exit area 개별로 보여주고 합쳐진 entry area, exit area 보여주기
