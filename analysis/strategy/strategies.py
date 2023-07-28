@@ -37,7 +37,7 @@ class BollingerBand(Strategy):
     def set_params(self, windows, upper_k, lower_k):
         super().set_params(windows=windows, upper_k=upper_k, lower_k=lower_k)
 
-    def _set_sub_indicators(self):
+    def set_sub_indicators(self):
         df_indi = Indicator().bollinger_band(self.df_raw, **self.params)
         df_indi.dropna(inplace=True)
 
@@ -68,36 +68,16 @@ class GoldenDeadCross(Strategy):
     pass
 
 
-
-# input : raw data
-# df_raw = test_rawdata()
-
-# process
-# strtg = BollingerBand(df_raw, df_raw.columns)
-# df_algo = strtg.execute_algorithm(*args, **kwargs)
-# df_back = strtg.backtest(df_algo)
-# df_score = strtg.score(df_back)
-# strtg.vis_algo
-# strtg.vis_back
-# strtg.vis_score
-
-
-
-
 bb = BollingerBand()
+df_indi = bb.set_sub_indicators()
 df_algo = bb.execute_algorithm()
-df_algo.head()
-df_indi = df_algo.iloc[:,:4]
-df_indi.head()
+df_backtest = bb.backtest()
+
+
+# from datetime import datetime
 fig = bb.init_fig()
-fig = bb.vis_indicator(fig, df_indi, "markers")
-fig = bb.vis_entry_exit(fig, df_algo)
+# fig = bb.vis_backtest(fig, df_indi, df_backtest)
+fig = bb.vis_entry_exit(fig, df_indi, df_algo)
+# fig = bb.change_layout_color(fig, (df_indi.index[10],df_indi.index[10]), "lightgray")
 
-bb.fig_show(fig, html=False)
-# df_algo = bb.execute_algorithm()
-# df_algo.head()
-# bb.vis_indicators
-# bb.vis_algo
-# bb.vis_backtest
-
-# bb.vis_algo(html=False)
+bb.fig_show(fig)

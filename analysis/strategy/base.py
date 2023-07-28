@@ -2,14 +2,14 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 from pandas.api.types import is_list_like
-
+from analysis.visualization import scatter_plot, line_plot
 
 class Algorithm(ABC):
 
     @abstractmethod
-    def _set_sub_indicators(self):
+    def set_sub_indicators(self):
         pass
 
     @abstractmethod
@@ -74,7 +74,7 @@ class Algorithm(ABC):
         return df_signal
 
     def execute_algorithm(self):
-        df_indi = self._set_sub_indicators()
+        df_indi = self.set_sub_indicators()
         df_cond = self._set_condition(df_indi)
         df_position = self._set_position(df_cond)
         df_algo = self._set_signals(df_position)
@@ -162,6 +162,8 @@ class Visualize():
 
     def init_fig(self):
         fig = go.Figure()
+        fig = self._set_background_color(fig, "white")
+
         return fig
 
     def fig_show(self, fig, name=None, html=True):
@@ -220,7 +222,7 @@ class Visualize():
 
         return fig
 
-    def _add_trading_signal(self, df_backtest, fig):
+    def _add_trading_signal(self, fig, df_backtest):
         for i in range(len(df_backtest)):
             position = df_backtest.iloc[i]["position"]
             entry_date = df_backtest.iloc[i]["entry_date"]
@@ -264,33 +266,100 @@ class Visualize():
 
         return fig
 
-    def _add_entry_exit_signal(self, df_algo, fig):
-        pass
-
-    def vis_indicator(self, fig, df_indi, mode):
-        columns = df_indi.columns
-        if is_list_like(columns):
-            for col in columns:
-                fig.add_trace(go.Scatter(x=df_indi.index,
-                                         y=df_indi[col],
-                                         mode=mode,
-                                         name=col))
-        else:
-            fig.add_trace(go.Scatter(x=df_indi.index,
-                                     y=df_indi[columns],
-                                     mode=mode,
-                                     name=columns))
+    def _set_background_color(self, fig, color):
+        fig.update_layout(plot_bgcolor=color)
 
         return fig
 
-    def vis_entry_exit(self, fig, df_algo):
-        df_nbc = df_algo.loc[df_algo["entry_buy_cond"], "value"]
-        df_nsc = df_algo.loc[df_algo["entry_sell_cond"], "value"]
-        # df_xbc = df_algo.loc[df_algo["exit_buy_cond"], "value"]
-        # df_xsc = df_algo.loc[df_algo["exit_sell_cond"], "value"]
+    def _range_break(self, fig, df):
+        dt_all = pd.date_range(start=df.index[0], end=df.index[-1])
+        dt_breaks = [day for day in dt_all if not day in df.index]
+        fig.update_xaxes(
+            rangebreaks=[dict(values=dt_breaks)]
+        )
+        return fig
 
-        fig = self._add_signal(fig, df_nbc, "long")
-        fig = self._add_signal(fig, df_nsc, "short")
+    def _range_background_color(self, fig, start_x, end_x, color):
+        shape=dict(
+            type="rect",
+            xref="x",
+            yref="paper",
+            x0=start_x-timedelta(hours=12),
+            x1=end_x+timedelta(hours=12),
+            y0=0,
+            y1=1,
+            line={"width": 0},
+            fillcolor=color,
+            opacity=0.3,
+            layer="below")
+
+        return shape
+
+    def change_background_color(self, fig, df, color):
+        shapes = []
+        for day in df.index:
+            shapes.append(self._range_background_color(fig, day, day, color))
+
+        return shapes
+
+    def update_layout_shape(self, fig, shapes):
+        fig.update_layout(shapes=shapes)
+
+        return fig
+
+    def _add_entry_exit_signal(self, df_algo, fig):
+        pass
+
+    def vis_indicator(self, fig, df_indi):
+        columns = df_indi.columns[1:]
+        if is_list_like(columns):
+            for col in columns:
+                fig = line_plot(fig,
+                                x=df_indi.index,
+                                y=df_indi[col],
+                                marker={"opacity": 0.5},
+                                name=col,
+                                mark=True)
+        else:
+            fig = line_plot(fig,
+                            x=df_indi.index,
+                            y=df_indi[columns],
+                            marker={"opacity": 0.5},
+                            name=col,
+                            mark=True)
+        fig = line_plot(fig,
+                        x=df_indi.index,
+                        y=df_indi["value"],
+                        line={"color": "black"},
+                        marker={"opacity": 0.5},
+                        name="value",
+                        mark=True)
+
+        return fig
+
+    def vis_entry_exit(self, fig, df_indi, df_algo):
+        # df_nbc = df_algo.loc[df_algo["entry_buy_cond"], "value"]
+        # df_nsc = df_algo.loc[df_algo["entry_sell_cond"], "value"]
+        df_xbc = df_algo.loc[df_algo["exit_buy_cond"], "value"]
+        df_xsc = df_algo.loc[df_algo["exit_sell_cond"], "value"]
+        fig = self.vis_indicator(fig, df_indi)
+        fig = self._range_break(fig, df_indi)
+
+        fig = scatter_plot(fig,
+                           x=df_xbc.index,
+                           y=df_xbc,
+                           name="exit_buy_cond")
+        fig = scatter_plot(fig,
+                           x=df_xsc.index,
+                           y=df_xsc,
+                           name="exit_sell_cond")
+        shape1 = self.change_background_color(fig, df_xsc, "lightcoral")
+        shape2 = self.change_background_color(fig, df_xbc, "lightskyblue")
+        shape3 = shape1 + shape2
+        fig = self.update_layout_shape(fig, shape3)
+
+        # fig = self._add_signal(fig, df_nbc, "long")
+        # fig = self._add_signal(fig, df_nsc, "short")
         # fig = self._add_signal(fig, df_xbc, "short")
         # fig = self._add_signal(fig, df_xsc, "long")
 
@@ -343,9 +412,19 @@ class Visualize():
 
         self.fig_show(fig, name, html)
 
-
-    def vis_backtest(self):
-        pass
+    def vis_backtest(self, fig, df_indi, df_backtest):
+        fig = self.vis_indicator(fig, df_indi)
+        fig = self._range_break(fig, df_indi)
+        fig = scatter_plot(fig,
+                           x=df_backtest["entry_date"],
+                           y=df_backtest["entry_value"],
+                           name="entry_value")
+        fig = scatter_plot(fig,
+                           x=df_backtest["exit_date"],
+                           y=df_backtest["exit_value"],
+                           name="exit_value")
+        self._add_trading_signal(fig, df_backtest)
+        return fig
 
     def _vis_trading_signal(self, fig, df_algo):
         for i in range(len(df_algo)):

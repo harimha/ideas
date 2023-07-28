@@ -9,6 +9,35 @@ def _fig_show(fig, name=None, html=True):
     else:
         fig.show()
 
+
+def scatter_plot(fig, x, y, color=None, name=None, marker:dict=None):
+    fig.add_trace(go.Scatter(x=x,
+                             y=y,
+                             mode="markers",
+                             marker=marker,
+                             name=name))
+
+    return fig
+
+def line_plot(fig, x, y,
+              color=None, name=None, mark=False, line:dict=None, marker:dict=None):
+    if mark:
+        fig.add_trace(go.Scatter(x=x,
+                                 y=y,
+                                 mode="lines+markers",
+                                 marker=marker,
+                                 line=line,
+                                 name=name))
+    else:
+        fig.add_trace(go.Scatter(x=x,
+                                 y=y,
+                                 mode="lines",
+                                 line=line,
+                                 name=name))
+    return fig
+
+
+
 def visualize(df, columns:str or [], fig, mode="markers", name=None, html=True):
     if is_list_like(columns):
         for col in columns:
