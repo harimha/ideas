@@ -1,7 +1,6 @@
+from datetime import datetime
 from pandas.api.types import is_list_like
 import plotly.graph_objects as go
-from datetime import datetime
-
 
 def _fig_show(fig, name=None, html=True):
     if html:
@@ -10,15 +9,16 @@ def _fig_show(fig, name=None, html=True):
     else:
         fig.show()
 
-def visualize(df, columns:str or [], mode="markers", name=None, html=True):
-    fig = go.Figure()
+def visualize(df, columns:str or [], fig, mode="markers", name=None, html=True):
     if is_list_like(columns):
         for col in columns:
             fig.add_trace(go.Scatter(x=df.index,
                                      y=df[col],
-                                     mode=mode))
+                                     mode=mode,
+                                     name=col))
     else:
         fig.add_trace(go.Scatter(x=df.index,
                                  y=df[columns],
-                                 mode=mode))
-    _fig_show(fig, name, html)
+                                 mode=mode,
+                                 name=columns))
+    return fig

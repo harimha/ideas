@@ -1,84 +1,32 @@
-import fdata.api as api
-from pandas.api.types import is_list_like
-import plotly.graph_objects as go
-from datetime import datetime
-from abc import ABC, abstractmethod
-from analysis.visualization import visualize
 import pandas as pd
+import plotly.graph_objects as go
 
-
-# input : raw data
-# df_raw = test_rawdata()
-
-# process
-# strtg = BollingerBand(df_raw, df_raw.columns)
-# df_algo = strtg.execute_algorithm(*args, **kwargs)
-# df_back = strtg.backtest(df_algo)
-# df_score = strtg.score(df_back)
-# strtg.vis_algo
-# strtg.vis_back
-# strtg.vis_score
-
-
-class Indicators():
-
-    @staticmethod
-    def bollinger_band(df_raw, windows=20, upper_k=2, lower_k=2):
-        df_indi = df_raw.copy()
-        mean = df_indi["value"].rolling(windows).mean()
-        std = df_indi["value"].rolling(windows).std()
-        df_indi["mid"] = mean
-        df_indi["upper"] = mean + upper_k * std
-        df_indi["lower"] = mean - lower_k * std
-
-        return df_indi
-
-    @staticmethod
-    def sma(df_raw, windows: str or list):
-        df_indi = df_raw.copy()
-        if is_list_like(windows):
-            for window in windows:
-                df_indi[f"sma{window}"] = df_indi["value"].rolling(window).mean()
-        else:
-            df_indi[f"sma{windows}"] = df_indi["value"].rolling(windows).mean()
-
-        return df_indi
-
-    @staticmethod
-    def visualize_indicator(indicator, *args, **kwargs):
-        df_indi = indicator(*args, **kwargs)
-        visualize(df_indi, df_indi.columns, name="test")
+from abc import ABC, abstractmethod
+from datetime import datetime
+from pandas.api.types import is_list_like
 
 
 class Algorithm(ABC):
 
     @abstractmethod
-    def _set_sub_indicators(self, *args, **kwargs):
+    def _set_sub_indicators(self):
         pass
 
     @abstractmethod
     def _entry_buy_condition(self, df_indi):
-        cond = None
-
-        return cond
+        pass
 
     @abstractmethod
     def _entry_sell_condition(self, df_indi):
-        cond = None
-
-        return cond
+        pass
 
     @abstractmethod
     def _exit_buy_condition(self, df_indi):
-        cond = None
-
-        return cond
+        pass
 
     @abstractmethod
     def _exit_sell_condition(self, df_indi):
-        cond = None
-
-        return cond
+        pass
 
     def _set_condition(self, df_indi):
         df_indi["entry_buy_cond"] = self._entry_buy_condition(df_indi)
@@ -125,6 +73,238 @@ class Algorithm(ABC):
 
         return df_signal
 
+    def execute_algorithm(self):
+        df_indi = self._set_sub_indicators()
+        df_cond = self._set_condition(df_indi)
+        df_position = self._set_position(df_cond)
+        df_algo = self._set_signals(df_position)
+
+        return df_algo
+
+
+class Backtest():
+    def __init__(self):
+        self.set_cost()
+
+    def _register_entry(self, trading_log, position, date, value):
+        trading_log["position"].append(position)
+        trading_log["entry_date"].append(date)
+        trading_log["entry_value"].append(value)
+
+    def _register_exit(self, trading_log, date, value):
+        trading_log["exit_date"].append(date)
+        trading_log["exit_value"].append(value)
+
+    def _add_rtrn(self, df_backtest):
+        long_rtrn = (df_backtest["exit_value"]*(1-self.sell_cost)-df_backtest["entry_value"]*(1+self.buy_cost))/df_backtest["entry_value"]
+        short_rtrn = (df_backtest["entry_value"]*(1-self.sell_cost)-df_backtest["exit_value"]*(1+self.buy_cost))/df_backtest["exit_value"]
+        df_backtest.loc[df_backtest["position"]=="long", "rtrn"] = long_rtrn
+        df_backtest.loc[df_backtest["position"]=="short", "rtrn"] = short_rtrn
+
+        return df_backtest
+
+    def _add_acc_rtrn(self, df_backtest):
+        df_backtest["acc_rtrn"] = df_backtest["rtrn"].cumsum()
+
+        return df_backtest
+
+    def set_cost(self, tax=0.002, sell_fee=0.00015, buy_fee=0.00015, slippage=0):
+        self.sell_cost = tax+sell_fee+slippage
+        self.buy_cost = buy_fee+slippage
+
+    def backtest(self, df_algo, side="long"):
+        trading_log = {"position": [], "entry_date": [], "entry_value": [],
+                       "exit_date": [], "exit_value": []}
+        is_long_position = False
+        is_sell_position = False
+        for i in range(len(df_algo)):
+            date = df_algo.index[i]
+            value = df_algo.iloc[i]["value"]
+            position = df_algo.iloc[i]["position"]
+            entry_buy_cond = ((position == "long") & (df_algo.iloc[i]["entry_buy"]))
+            entry_sell_cond = ((position == "short") & (df_algo.iloc[i]["entry_sell"]))
+            exit_buy_cond = (((position == "nothing") | (position == "short")) & (df_algo.iloc[i]["exit_buy"]))
+            exit_sell_cond = (((position == "nothing") | (position == "long")) & (df_algo.iloc[i]["exit_sell"]))
+
+            if entry_buy_cond:
+                self._register_entry(trading_log, position, date, value)
+                is_long_position = True
+            if entry_sell_cond:
+                self._register_entry(trading_log, position, date, value)
+                is_sell_position = True
+            if exit_buy_cond:
+                if is_long_position:
+                    self._register_exit(trading_log, date, value)
+                    is_long_position = False
+                else:
+                    pass
+            if exit_sell_cond:
+                if is_sell_position:
+                    self._register_exit(trading_log, date, value)
+                    is_sell_position = False
+                else:
+                    pass
+        if df_algo.iloc[-1]["position"] != "nothing":
+            self._register_exit(trading_log, df_algo.index[-1], df_algo.iloc[-1]["value"])
+        df_backtest = pd.DataFrame(trading_log)
+        if side == "all":
+            pass
+        else:
+            df_backtest = df_backtest.loc[df_backtest["position"] == side]
+            df_backtest.index = range(len(df_backtest))
+        df_backtest = self._add_rtrn(df_backtest)
+        df_backtest = self._add_acc_rtrn(df_backtest)
+
+        return df_backtest
+
+
+class Visualize():
+
+    def init_fig(self):
+        fig = go.Figure()
+        return fig
+
+    def fig_show(self, fig, name=None, html=True):
+        if html:
+            now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            fig.write_html(f"html/{name}_{now}.html")
+        else:
+            fig.show()
+
+    def _get_bar_width_tradeoff(self, df_backtest):
+        '''
+        bar chart에서 투자 기간에 따른 bar width와 trade off 를 반환
+        '''
+        bar_width = df_backtest["exit_date"] - df_backtest["entry_date"]
+        bar_width = bar_width.astype("int64") / 1000000  # microseconds 단위로 변환
+        bar_tradeoff = bar_width.astype("int64") / 2000000  # 1/2 microseconds 만큼 이동
+
+        return bar_width, bar_tradeoff
+
+    def _set_color(self, df, column, value_color: dict):
+        '''
+        color 변환용 값 반환
+        value_color : ex){"buy": "orange", "sell": "purple"}
+        '''
+        df_col = df.copy()
+        for value, color in value_color.items():
+            df_col.loc[df_col[column] == value, "color"] = color
+        df_col = df_col["color"]
+
+        return df_col
+
+    def _add_trading_signal(self, df_backtest, fig):
+        for i in range(len(df_backtest)):
+            position = df_backtest.iloc[i]["position"]
+            entry_date = df_backtest.iloc[i]["entry_date"]
+            entry_value = df_backtest.iloc[i]["entry_value"]
+            exit_date = df_backtest.iloc[i]["exit_date"]
+            exit_value = df_backtest.iloc[i]["exit_value"]
+            if position == "long":
+                fig.add_annotation(x=entry_date,
+                                   y=entry_value,
+                                   showarrow=True,
+                                   arrowhead=2,
+                                   arrowcolor="red",
+                                   ax=0,
+                                   ay=25,
+                                   arrowwidth=1.5)
+                fig.add_annotation(x=exit_date,
+                                   y=exit_value,
+                                   showarrow=True,
+                                   arrowhead=2,
+                                   arrowcolor="orange",
+                                   ax=0,
+                                   ay=-25,
+                                   arrowwidth=1.5)
+            if position == "short":
+                fig.add_annotation(x=entry_date,
+                                   y=entry_value,
+                                   showarrow=True,
+                                   arrowhead=2,
+                                   arrowcolor="blue",
+                                   ax=0,
+                                   ay=-25,
+                                   arrowwidth=1.5)
+                fig.add_annotation(x=exit_date,
+                                   y=exit_value,
+                                   showarrow=True,
+                                   arrowhead=2,
+                                   arrowcolor="purple",
+                                   ax=0,
+                                   ay=25,
+                                   arrowwidth=1.5)
+        return fig
+
+    def _add_entry_exit_signal(self, df_algo, fig):
+
+    def vis_indicator(self, fig, df_indi, mode, name="test", html=True):
+        columns = df_indi.columns
+        if is_list_like(columns):
+            for col in columns:
+                fig.add_trace(go.Scatter(x=df_indi.index,
+                                         y=df_indi[col],
+                                         mode=mode,
+                                         name=col))
+        else:
+            fig.add_trace(go.Scatter(x=df_indi.index,
+                                     y=df_indi[columns],
+                                     mode=mode,
+                                     name=columns))
+
+        return fig
+
+    def vis_algo(self,
+                 entry_buy_cond=True,
+                 entry_sell_cond=True,
+                 exit_buy_cond=True,
+                 exit_sell_cond=True,
+                 mode="markers",
+                 name="test", html=True):
+        conditions = {"entry_buy_cond":entry_buy_cond,
+                "entry_sell_cond": entry_sell_cond,
+                "exit_buy_cond": exit_buy_cond,
+                "exit_sell_cond": exit_sell_cond}
+        df_algo = self.execute_algorithm()
+        fig = go.Figure()
+        fig = self.vis_indicator(fig, mode="lines")
+
+        for condition_name, condition in conditions.items():
+            cond_df = df_algo.loc[df_algo[condition_name], "value"]
+            fig.add_trace(go.Scatter(x=cond_df.index,
+                                     y=cond_df,
+                                     mode=mode,
+                                     name=condition_name))
+
+        # True에 해당하는 것만 저장
+        # 최대 겹치는 6가지 경우의 수
+        nbc_nsc = df_algo["entry_buy_cond"]&df_algo["entry_sell_cond"]
+        nbc_xbc = df_algo["entry_buy_cond"]&df_algo["exit_buy_cond"]
+        nbc_xsc = df_algo["entry_buy_cond"]&df_algo["exit_sell_cond"]
+        nsc_xbc = df_algo["entry_sell_cond"]&df_algo["exit_buy_cond"]
+        nsc_xsc = df_algo["entry_sell_cond"]&df_algo["exit_sell_cond"]
+        xbc_xsc = df_algo["exit_buy_cond"]&df_algo["exit_sell_cond"]
+        conditions = {"nbc_nsc": nbc_nsc,
+                      "nbc_xbc": nbc_xbc,
+                      "nbc_xsc": nbc_xsc,
+                      "nsc_xbc": nsc_xbc,
+                      "nsc_xsc": nsc_xsc,
+                      "xbc_xsc": xbc_xsc,
+                      }
+        for condition_name, condition in conditions.items():
+            cond_df = df_algo.loc[condition, "value"]
+            fig.add_trace(go.Scatter(x=cond_df.index,
+                                     y=cond_df,
+                                     mode=mode,
+                                     name=condition_name))
+
+
+        self.fig_show(fig, name, html)
+
+
+    def vis_backtest(self):
+        pass
+
     def _vis_trading_signal(self, fig, df_algo):
         for i in range(len(df_algo)):
             date = df_algo.index[i]
@@ -166,14 +346,6 @@ class Algorithm(ABC):
                                    ay=-25,
                                    arrowwidth=1.5)
 
-    def execute_algorithm(self, *args, **kwargs):
-        df_indi = self._set_sub_indicators(*args, **kwargs)
-        df_cond = self._set_condition(df_indi)
-        df_position = self._set_position(df_cond)
-        df_algo = self._set_signals(df_position)
-
-        return df_algo
-
     def visualize_algo(self, html=True, *args, **kwargs):
         df_algo = self.execute_algorithm(*args, **kwargs)
         fig = go.Figure()
@@ -198,128 +370,4 @@ class Algorithm(ABC):
             fig.write_html(f"{now}.html")
         else:
             fig.show()
-
-
-
-class Backtest():
-    def _set_cost(self, tax=0.002, sell_fee=0.00015, buy_fee=0.00015, slippage=0):
-        sell_cost = tax+sell_fee+slippage
-        buy_cost = buy_fee+slippage
-
-        return sell_cost, buy_cost
-
-    def _register_entry(self, trading_log, position, date, value):
-        trading_log["position"].append(position)
-        trading_log["entry_date"].append(date)
-        trading_log["entry_value"].append(value)
-
-    def _register_exit(self, trading_log, date, value):
-        trading_log["exit_date"].append(date)
-        trading_log["exit_value"].append(value)
-
-    def backtest(self, df_algo, side="long"):
-        trading_log = {"position": [], "entry_date": [], "entry_value": [],
-                       "exit_date": [], "exit_value": []}
-        is_long_position = False
-        is_sell_position = False
-        for i in range(len(df_algo)):
-            date = df_algo.index[i]
-            value = df_algo.iloc[i]["value"]
-            position = df_algo.iloc[i]["position"]
-            entry_buy_cond = ((position == "long") & (df_algo.iloc[i]["entry_buy"]))
-            entry_sell_cond = ((position == "short") & (df_algo.iloc[i]["entry_sell"]))
-            exit_buy_cond = (((position == "nothing") | (position == "short")) & (df_algo.iloc[i]["exit_buy"]))
-            exit_sell_cond = (((position == "nothing") | (position == "long")) & (df_algo.iloc[i]["exit_sell"]))
-
-            if entry_buy_cond:
-                self._register_entry(trading_log, position, date, value)
-                is_long_position = True
-            if entry_sell_cond:
-                self._register_entry(trading_log, position, date, value)
-                is_sell_position = True
-            if exit_buy_cond:
-                if is_long_position:
-                    self._register_exit(trading_log, date, value)
-                    is_long_position = False
-                else:
-                    pass
-            if exit_sell_cond:
-                if is_sell_position:
-                    self._register_exit(trading_log, date, value)
-                    is_sell_position = False
-                else:
-                    pass
-
-        if df_algo.iloc[-1]["position"] != "nothing":
-            self._register_exit(trading_log, df_algo.index[-1], df_algo.iloc[-1]["value"])
-
-        df_backtest = pd.DataFrame(trading_log)
-        if side == "all":
-            pass
-        else:
-            df_backtest = df_backtest.loc[df_backtest["position"] == side]
-            df_backtest.index = range(len(df_backtest))
-
-        return df_backtest
-
-    def performance(self):
-        pass
-
-    def visualize_backtest(self):
-        pass
-
-
-class Strategy(Algorithm, Backtest):
-    def __init__(self, df_raw=None, column=None):
-        if (df_raw is None) & (column is None):
-            self.df_raw = self._set_rawdata(api.stock_c("삼성전자", "20200101", "20230101"), "삼성전자")
-            self.column = "삼성전자"
-        else:
-            self.df_raw = self._set_rawdata(df_raw, column)
-            self.column = column
-
-    def _set_rawdata(self, df_raw, column):
-        raw_data = df_raw[[column]].copy()
-        raw_data.columns = ["value"]
-
-        return raw_data
-
-class BollingerBand(Strategy):
-    def __init__(self, df_raw=None, column=None):
-        super().__init__(df_raw, column)
-
-    def _set_sub_indicators(self, windows=20, upper_k=2, lower_k=2):
-        df_indi = Indicators().bollinger_band(self.df_raw, windows, upper_k, lower_k)
-        df_indi.dropna(inplace=True)
-
-        return df_indi
-
-    def _entry_buy_condition(self, df_indi):
-        cond = df_indi["value"] >= df_indi["upper"]
-
-        return cond
-
-    def _entry_sell_condition(self, df_indi):
-        cond = df_indi["value"] <= df_indi["lower"]
-
-        return cond
-
-    def _exit_buy_condition(self, df_indi):
-        cond = df_indi["value"] <= df_indi["mid"]
-
-        return cond
-
-    def _exit_sell_condition(self, df_indi):
-        cond = df_indi["value"] > df_indi["mid"]
-
-        return cond
-
-    def execute_algorithm(self, windows=20, upper_k=2, lower_k=2):
-        df_algo = super().execute_algorithm(windows, upper_k, lower_k)
-
-        return df_algo
-
-    def visualize_algo(self, windows=20, upper_k=2, lower_k=2):
-        super().visualize_algo(windows=20, upper_k=2, lower_k=2)
-
 
