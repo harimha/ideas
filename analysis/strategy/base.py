@@ -181,7 +181,7 @@ class Visualize():
 
         return bar_width, bar_tradeoff
 
-    def _set_color(self, df, column, value_color: dict):
+    def _get_color_df(self, df, column, value_color: dict):
         '''
         color 변환용 값 반환
         value_color : ex){"buy": "orange", "sell": "purple"}
@@ -192,6 +192,33 @@ class Visualize():
         df_col = df_col["color"]
 
         return df_col
+
+    def _add_signal(self, fig, df_value, side="long"):
+        if side == "long":
+            for i in range(len(df_value)):
+                date = df_value.index[i]
+                value = df_value.iloc[i]
+                fig.add_annotation(x=date,
+                                   y=value,
+                                   showarrow=True,
+                                   arrowhead=2,
+                                   yshift=-10,
+                                   ax=0,
+                                   ay=25,
+                                   arrowwidth=1.5)
+        else:
+            for i in range(len(df_value)):
+                date = df_value.index[i]
+                value = df_value.iloc[i]
+                fig.add_annotation(x=date,
+                                   y=value,
+                                   showarrow=True,
+                                   arrowhead=2,
+                                   ax=0,
+                                   ay=-25,
+                                   arrowwidth=1.5)
+
+        return fig
 
     def _add_trading_signal(self, df_backtest, fig):
         for i in range(len(df_backtest)):
@@ -234,11 +261,13 @@ class Visualize():
                                    ax=0,
                                    ay=25,
                                    arrowwidth=1.5)
+
         return fig
 
     def _add_entry_exit_signal(self, df_algo, fig):
+        pass
 
-    def vis_indicator(self, fig, df_indi, mode, name="test", html=True):
+    def vis_indicator(self, fig, df_indi, mode):
         columns = df_indi.columns
         if is_list_like(columns):
             for col in columns:
@@ -251,6 +280,19 @@ class Visualize():
                                      y=df_indi[columns],
                                      mode=mode,
                                      name=columns))
+
+        return fig
+
+    def vis_entry_exit(self, fig, df_algo):
+        df_nbc = df_algo.loc[df_algo["entry_buy_cond"], "value"]
+        df_nsc = df_algo.loc[df_algo["entry_sell_cond"], "value"]
+        # df_xbc = df_algo.loc[df_algo["exit_buy_cond"], "value"]
+        # df_xsc = df_algo.loc[df_algo["exit_sell_cond"], "value"]
+
+        fig = self._add_signal(fig, df_nbc, "long")
+        fig = self._add_signal(fig, df_nsc, "short")
+        # fig = self._add_signal(fig, df_xbc, "short")
+        # fig = self._add_signal(fig, df_xsc, "long")
 
         return fig
 

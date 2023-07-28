@@ -87,8 +87,17 @@ class GoldenDeadCross(Strategy):
 bb = BollingerBand()
 df_algo = bb.execute_algorithm()
 df_algo.head()
+df_indi = df_algo.iloc[:,:4]
+df_indi.head()
+fig = bb.init_fig()
+fig = bb.vis_indicator(fig, df_indi, "markers")
+fig = bb.vis_entry_exit(fig, df_algo)
+
+bb.fig_show(fig, html=False)
+# df_algo = bb.execute_algorithm()
+# df_algo.head()
 # bb.vis_indicators
 # bb.vis_algo
 # bb.vis_backtest
 
-bb.vis_algo(html=False)
+# bb.vis_algo(html=False)
