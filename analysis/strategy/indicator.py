@@ -14,13 +14,10 @@ class Indicator():
         return df_indi
 
     @staticmethod
-    def sma(df_raw, windows: str or list):
+    def sma(df_raw, *windows):
         df_indi = df_raw.copy()
-        if is_list_like(windows):
-            for window in windows:
-                df_indi[f"sma{window}"] = df_indi["value"].rolling(window).mean()
-        else:
-            df_indi[f"sma{windows}"] = df_indi["value"].rolling(windows).mean()
+        for window in windows:
+            df_indi[f"sma{window}"] = df_indi["value"].rolling(window).mean()
 
         return df_indi
 

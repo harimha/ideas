@@ -65,19 +65,58 @@ class BollingerBand(Strategy):
 
 
 class GoldenDeadCross(Strategy):
-    pass
+    def __init__(self, df_raw=None, column=None, short=20, long=60):
+        super().__init__(df_raw, column, short=short, long=long)
+
+    def set_params(self, short, long):
+        super().set_params(short=short, long=long)
+
+    def set_sub_indicators(self):
+        df_indi = Indicator().sma(self.df_raw, *self.params.values())
+        df_indi.dropna(inplace=True)
+
+        return df_indi
+
+    def _entry_buy_condition(self, df_indi):
+        cond = df_indi[f"sma{self.params['short']}"] >= df_indi[f"sma{self.params['long']}"]
+
+        return cond
+
+    def _entry_sell_condition(self, df_indi):
+        cond = df_indi[f"sma{self.params['short']}"] < df_indi[f"sma{self.params['long']}"]
+
+        return cond
+
+    def _exit_buy_condition(self, df_indi):
+        cond = df_indi[f"sma{self.params['short']}"] < df_indi[f"sma{self.params['long']}"]
+
+        return cond
+
+    def _exit_sell_condition(self, df_indi):
+        cond = df_indi[f"sma{self.params['short']}"] >= df_indi[f"sma{self.params['long']}"]
+
+        return cond
 
 
 bb = BollingerBand()
-df_indi = bb.set_sub_indicators()
-df_algo = bb.execute_algorithm()
-df_backtest = bb.backtest()
+gd = GoldenDeadCross()
+# df_indi = bb.set_sub_indicators()
+# df_cond = bb.get_condition_df(df_indi)
+# df_position = bb.get_position_df(df_cond)
+# df_sig = bb.get_trading_signal_df(df_position)
+# df_algo = bb.execute_algorithm()
+# df_backtest = bb.backtest()
 
-
-# from datetime import datetime
-fig = bb.init_fig()
-# fig = bb.vis_backtest(fig, df_indi, df_backtest)
-fig = bb.vis_entry_exit(fig, df_indi, df_algo)
-# fig = bb.change_layout_color(fig, (df_indi.index[10],df_indi.index[10]), "lightgray")
-
-bb.fig_show(fig)
+df_indi = gd.set_sub_indicators()
+df_cond = gd.get_condition_df(df_indi)
+df_position = gd.get_position_df(df_cond)
+df_sig = gd.get_trading_signal_df(df_position)
+df_algo = gd.execute_algorithm()
+df_backtest = gd.backtest()
+#
+# fig = bb.init_fig(secondary_y=False)
+# fig = bb.vis_algo(fig, df_algo, vis_indi=False)
+# bb.fig_show(fig, html=False)
+fig = gd.init_fig(secondary_y=False)
+fig = gd.vis_algo(fig, df_algo, vis_indi=False)
+gd.fig_show(fig, html=False)
