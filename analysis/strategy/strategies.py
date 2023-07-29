@@ -117,6 +117,14 @@ df_backtest = gd.backtest()
 # fig = bb.init_fig(secondary_y=False)
 # fig = bb.vis_algo(fig, df_algo, vis_indi=False)
 # bb.fig_show(fig, html=False)
-fig = gd.init_fig(secondary_y=False)
-fig = gd.vis_algo(fig, df_algo, vis_indi=False)
+fig = gd.init_fig(2,1)
+# gd.add_secondary_y(fig,2,1)
+
+fig = gd.vis_value(fig, df_indi["value"], 2,1)
+fig = gd.vis_sub_indicator(fig, df_indi, 1,1)
+
+
+# fig = gd.vis_backtest(fig, df_algo, df_backtest, vis_indi=True, secondary_y=True)
+
+# gd.update_secondary_y(fig, row=1, col=1, secondary_y=False)
 gd.fig_show(fig, html=False)
