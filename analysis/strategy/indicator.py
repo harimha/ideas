@@ -1,4 +1,4 @@
-from analysis.visualization import visualize
+from analysis.visualization import Plot
 
 class Indicator():
 
@@ -24,4 +24,11 @@ class Indicator():
     @staticmethod
     def visualize_indicator(indicator, *args, **kwargs):
         df_indi = indicator(*args, **kwargs)
-        visualize(df_indi, df_indi.columns, name="test")
+        x = df_indi.index
+        fig = Plot().init_fig()
+        for column in df_indi.columns:
+            fig = Plot().line_plot(fig, x=df_indi.index, y=df_indi[column], name=column, mark=True)
+
+        Plot().fig_show(fig, name="indicator", html=True)
+
+

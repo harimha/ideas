@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from pandas.api.types import is_list_like
-from analysis.visualization import scatter_plot, line_plot, bar_chart
+from analysis.visualization import Plot
 import numpy as np
 
 
@@ -98,8 +98,8 @@ class Backtest():
     def _add_rtrn(self, df_backtest):
         long_rtrn = (df_backtest["exit_value"]*(1-self.sell_cost)-df_backtest["entry_value"]*(1+self.buy_cost))/df_backtest["entry_value"]
         short_rtrn = (df_backtest["entry_value"]*(1-self.sell_cost)-df_backtest["exit_value"]*(1+self.buy_cost))/df_backtest["exit_value"]
-        df_backtest.loc[df_backtest["position"]=="long", "rtrn"] = long_rtrn
-        df_backtest.loc[df_backtest["position"]=="short", "rtrn"] = short_rtrn
+        df_backtest.loc[df_backtest["position"]=="long", "rtrn"] = round(long_rtrn,4)
+        df_backtest.loc[df_backtest["position"]=="short", "rtrn"] = round(short_rtrn,4)
 
         return df_backtest
 
@@ -160,12 +160,11 @@ class Backtest():
 
 class Visualize():
 
-    ################
     def _set_arrow_annotation(self, x, y, color, side="long"):
         if side == "long":
-            annotation = dict(x=x, y=y, showarrow=True, arrowhead=2, arrowcolor=color, ax=0, ay=25, arrowwidth=1.5)
+            annotation = dict(x=x, y=y, showarrow=True, arrowhead=2, arrowcolor=color, ax=0, ay=35, arrowwidth=2.5, yshift=-3)
         elif side == "short":
-            annotation = dict(x=x, y=y, showarrow=True, arrowhead=2, arrowcolor=color, ax=0, ay=-25, arrowwidth=1.5)
+            annotation = dict(x=x, y=y, showarrow=True, arrowhead=2, arrowcolor=color, ax=0, ay=-35, arrowwidth=2.5, yshift=3)
         else:
             raise ValueError("Only 'short' or 'long' is valid")
 
@@ -217,11 +216,6 @@ class Visualize():
 
         return fig
 
-    def _set_background_color(self, fig, color):
-        fig.update_layout(plot_bgcolor=color)
-
-        return fig
-
     def _xaxis_datetime_range_break(self, fig, dt_series):
         dt_all = pd.date_range(start=dt_series[0], end=dt_series[-1])
         dt_breaks = [day for day in dt_all if not day in dt_series]
@@ -231,32 +225,15 @@ class Visualize():
 
         return fig
 
-    def init_fig(self, rows=1, cols=1, shared_xaxes=True, vertical_spacing=0.02):
-        fig = make_subplots(rows=rows, cols=cols,
-                            shared_xaxes=shared_xaxes,
-                            vertical_spacing=vertical_spacing)
-        fig = self._set_background_color(fig, "white")
-        fig.update_xaxes(gridcolor="lightgray")
-        fig.update_yaxes(gridcolor="lightgray")
-
-        return fig
-
-    def fig_show(self, fig, name=None, html=True):
-        if html:
-            now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            fig.write_html(f"html/{name}_{now}.html")
-        else:
-            fig.show()
-
-    def _set_background_color_dtrange(self, start_dt, end_dt, color):
+    def _set_background_color_dtrange(self, start_dt, end_dt, color, y0=0, y1=1):
         shape = dict(
             type="rect",
             xref="x",
             yref="paper",
             x0=start_dt - timedelta(hours=12),
             x1=end_dt + timedelta(hours=12),
-            y0=0,
-            y1=1,
+            y0=y0,
+            y1=y1,
             line={"width": 0},
             fillcolor=color,
             opacity=0.3,
@@ -264,10 +241,10 @@ class Visualize():
 
         return shape
 
-    def _set_background_color_df(self, df, color):
+    def _set_background_color_df(self, df, color, y0=0, y1=1):
         shapes = []
         for day in df.index:
-            shapes.append(self._set_background_color_dtrange(day, day, color))
+            shapes.append(self._set_background_color_dtrange(day, day, color, y0=y0, y1=y1))
 
         return shapes
 
@@ -278,10 +255,7 @@ class Visualize():
         fig.update_layout(shapes=s)
 
         return fig
-    ################
 
-
-    ### 수정중 ###
     def _get_bar_width_offset(self, df_backtest):
         '''
         bar chart에서 투자 기간에 따른 bar width와 trade off 를 반환
@@ -292,6 +266,7 @@ class Visualize():
 
         return bar_width, bar_offset
 
+    #### 수정중
     def _get_color_df(self, df, column, value_color: dict):
         '''
         color 변환용 값 반환
@@ -304,177 +279,137 @@ class Visualize():
 
         return df_col
 
-    def _add_trading_signal(self, fig, df_backtest):
-        for i in range(len(df_backtest)):
-            position = df_backtest.iloc[i]["position"]
-            entry_date = df_backtest.iloc[i]["entry_date"]
-            entry_value = df_backtest.iloc[i]["entry_value"]
-            exit_date = df_backtest.iloc[i]["exit_date"]
-            exit_value = df_backtest.iloc[i]["exit_value"]
-            if position == "long":
-                fig.add_annotation(x=entry_date,
-                                   y=entry_value,
-                                   showarrow=True,
-                                   arrowhead=2,
-                                   arrowcolor="red",
-                                   ax=0,
-                                   ay=25,
-                                   arrowwidth=1.5)
-                fig.add_annotation(x=exit_date,
-                                   y=exit_value,
-                                   showarrow=True,
-                                   arrowhead=2,
-                                   arrowcolor="orange",
-                                   ax=0,
-                                   ay=-25,
-                                   arrowwidth=1.5)
-            if position == "short":
-                fig.add_annotation(x=entry_date,
-                                   y=entry_value,
-                                   showarrow=True,
-                                   arrowhead=2,
-                                   arrowcolor="blue",
-                                   ax=0,
-                                   ay=-25,
-                                   arrowwidth=1.5)
-                fig.add_annotation(x=exit_date,
-                                   y=exit_value,
-                                   showarrow=True,
-                                   arrowhead=2,
-                                   arrowcolor="purple",
-                                   ax=0,
-                                   ay=25,
-                                   arrowwidth=1.5)
-
-        return fig
-
-
     # visualize
-    def vis_value(self, fig, df_value, row=1, col=1, secondary_y=False):
-        fig = line_plot(fig,
-                        x=df_value.index,
-                        y=df_value,
-                        line={"color": "black"},
-                        marker={"opacity": 0.5},
-                        name="value",
-                        mark=True, row=row, col=col, secondary_y=secondary_y)
+    def vis_value(self, fig, df_value, rows=1, cols=1, y2=False):
+        fig = Plot().line_plot(fig,
+                               x=df_value.index,
+                               y=df_value,
+                               line={"color": "DimGray"},
+                               marker={"opacity": 0.5},
+                               name="value",
+                               mark=True, rows=rows, cols=cols, y2=y2)
         fig = self._xaxis_datetime_range_break(fig, df_value.index)
 
         return fig
 
-    def vis_sub_indicator(self, fig, df_indi, row=1, col=1, secondary_y=False):
+    def vis_sub_indicator(self, fig, df_indi, rows=1, cols=1, y2=False):
         columns = df_indi.columns[1:]
         if is_list_like(columns):
             for column in columns:
-                fig = line_plot(fig,
+                fig = Plot().line_plot(fig,
                                 x=df_indi.index,
                                 y=df_indi[column],
                                 marker={"opacity": 0.5},
                                 name=column,
                                 mark=True,
-                                row=row,
-                                col=col,
-                                secondary_y=secondary_y)
+                                rows=rows, cols=cols, y2=y2)
         else:
-            fig = line_plot(fig,
+            fig = Plot().line_plot(fig,
                             x=df_indi.index,
                             y=df_indi[columns],
                             marker={"opacity": 0.5},
                             name=columns,
                             mark=True,
-                            row=row,
-                            col=col,
-                            secondary_y=secondary_y)
+                            rows=rows, cols=cols, y2=y2)
         fig = self._xaxis_datetime_range_break(fig, df_indi.index)
 
         return fig
 
-    def vis_value_indicator(self, fig, df_indi, secondary_y=False):
-        fig = self.vis_sub_indicator(fig, df_indi)
-        fig = self.vis_value(fig, df_indi["value"], secondary_y)
-        if secondary_y:
-            fig.update_layout(yaxis=dict(side='right'),yaxis2=dict(side='left'))
+    def vis_value_indicator(self, fig, df_indi, rows=1, cols=1, y2=False):
+        fig = self.vis_sub_indicator(fig, df_indi, rows, cols, y2)
+        fig = self.vis_value(fig, df_indi["value"], rows, cols, y2)
         fig = self._xaxis_datetime_range_break(fig, df_indi.index)
-
 
         return fig
 
     def vis_entry_exit_condition(self, fig, df_cond, nbc=True, nsc=True, xbc=True, xsc=True,
-                                 vis_indi=True, secondary_y=False):
+                                 vis_indi=True, rows=1, cols=1, y0=0, y1=1, y2=False):
         if vis_indi:
             df_indi = df_cond.iloc[:, :df_cond.columns.get_loc("entry_buy_cond")].copy()
-            fig = self.vis_value_indicator(fig, df_indi, secondary_y=secondary_y)
+            fig = self.vis_value_indicator(fig, df_indi, rows=rows, cols=cols, y2=y2)
         else:
-            fig = self.vis_value(fig, df_cond["value"])
-
+            fig = self.vis_value(fig, df_cond["value"], rows=rows, cols=cols, y2=y2)
         cond = {"entry_buy_cond":{"visible":nbc,"color":"lightcoral"},
                 "entry_sell_cond":{"visible":nsc,"color":"LightSteelBlue"},
                 "exit_buy_cond":{"visible":xbc,"color":"lightskyblue"},
                 "exit_sell_cond":{"visible":xsc,"color":"LightSalmon"}}
-
         shapes=[]
         for cond_name, cond_val in cond.items():
             if cond_val["visible"]:
                 df = df_cond.loc[df_cond[cond_name],"value"]
-                shape = self._set_background_color_df(df, cond_val["color"])
+                shape = self._set_background_color_df(df, cond_val["color"],y0=y0, y1=y1)
                 shapes += shape
         fig = self._update_layout_shape(fig, shapes)
         fig = self._xaxis_datetime_range_break(fig, df_cond.index)
 
         return fig
 
-    def vis_position(self, fig, df_position, vis_indi=True, secondary_y=False):
+    def vis_position(self, fig, df_position, vis_indi=True, rows=1, cols=1, y0=0, y1=1, y2=False):
         if vis_indi:
             df_indi = df_position.iloc[:, :df_position.columns.get_loc("position")].copy()
-            fig = self.vis_value_indicator(fig, df_indi, secondary_y=secondary_y)
+            fig = self.vis_value_indicator(fig, df_indi, rows=rows, cols=cols, y2=y2)
         else:
-            fig = self.vis_value(fig, df_position["value"])
+            fig = self.vis_value(fig, df_position["value"], rows=rows, cols=cols, y2=y2)
 
         position = {"long":"LightSalmon",
                     "short":"LightSteelBlue"}
         shapes = []
         for position_type, color in position.items():
             df = df_position.loc[df_position["position"]==position_type, "value"]
-            shape = self._set_background_color_df(df, color)
+            shape = self._set_background_color_df(df, color, y0=y0, y1=y1)
             shapes += shape
         fig = self._update_layout_shape(fig, shapes)
         fig = self._xaxis_datetime_range_break(fig, df_position.index)
 
         return fig
 
-    def vis_algo(self, fig, df_algo, vis_indi=True, secondary_y=False, nb=True, ns=True, xb=True, xs=True):
-        df_position = df_algo.iloc[:, :df_algo.columns.get_loc("entry_buy")].copy()
-        fig = self.vis_position(fig, df_position, vis_indi, secondary_y)
+    def vis_trading_signal(self, fig, df_algo, vis_indi=True, nb=True, ns=True, xb=True, xs=True,
+                 rows=1, cols=1, y0=0, y1=1, y2=False):
+        if vis_indi:
+            df_indi = df_algo.iloc[:, :df_algo.columns.get_loc("position")].copy()
+            fig = self.vis_value_indicator(fig, df_indi, rows, cols, y2)
+        else:
+            fig = self.vis_value(fig, df_algo["value"], rows, cols, y2)
         fig = self._add_algo_signal_arrow(fig, df_algo, nb, ns, xb, xs)
         fig = self._xaxis_datetime_range_break(fig, df_algo.index)
 
+        return fig
+
+    def vis_algo(self, fig, df_algo, vis_indi=True, nb=True, ns=True, xb=True, xs=True,
+                 rows=1, cols=1, y0=0, y1=1, y2=False):
+        df_position = df_algo.iloc[:, :df_algo.columns.get_loc("entry_buy")].copy()
+        fig = self.vis_position(fig, df_position, vis_indi, rows, cols, y0, y1, y2=False)
+        fig = self._add_algo_signal_arrow(fig, df_algo, nb, ns, xb, xs)
+        fig = self._xaxis_datetime_range_break(fig, df_algo.index)
 
         return fig
 
-    ###########################################
-
-    def vis_backtest(self, fig, df_algo, df_backtest, vis_indi=True, secondary_y=True):
-        df_position = df_algo.iloc[:, :df_algo.columns.get_loc("entry_buy")].copy()
-        fig = self.vis_position(fig, df_position, vis_indi, secondary_y=False)
-        self._add_backtest_trading_arrow(fig, df_backtest)
-
+    def vis_rtrn(self, fig, df_backtest, rows=1, cols=1, y2=False):
         bar_width, bar_offset = self._get_bar_width_offset(df_backtest)
+        fig = Plot().line_plot(fig,
+                               x=df_backtest["exit_date"],
+                               y=df_backtest["acc_rtrn"],
+                               name="acc_rtrn",
+                               mark=True,
+                               rows=rows,
+                               cols=cols,
+                               y2=y2)
+        fig = Plot().bar_chart(fig,
+                               x=df_backtest["entry_date"],
+                               y=df_backtest["rtrn"],
+                               text=df_backtest["rtrn"],
+                               width=bar_width,
+                               offset=bar_offset,
+                               name="rtrn",
+                               rows=rows,
+                               cols=cols,
+                               y2=y2)
+        return fig
 
-        fig = line_plot(fig,
-                        x=df_backtest["exit_date"],
-                        y=df_backtest["acc_rtrn"],
-                        name="acc_rtrn",
-                        mark=True,
-                        secondary_y=secondary_y)
-
-        fig = bar_chart(fig,
-                        x=df_backtest["entry_date"],
-                        y=df_backtest["rtrn"],
-                        text=df_backtest["rtrn"],
-                        width=bar_width,
-                        offset=bar_offset,
-                        name="rtrn",
-                        secondary_y=secondary_y)
+    def vis_backtest(self, fig, df_algo, df_backtest, vis_indi=True):
+        fig = self.vis_trading_signal(fig, df_algo, rows=1, cols=1)
+        self._add_backtest_trading_arrow(fig, df_backtest)
+        fig = self.vis_rtrn(fig, df_backtest, rows=1, cols=1, y2=True)
         fig = self._xaxis_datetime_range_break(fig, df_algo.index)
 
         return fig

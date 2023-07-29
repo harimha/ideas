@@ -1,5 +1,6 @@
 from analysis.strategy.base import Algorithm, Backtest, Visualize
 from analysis.strategy.indicator import Indicator
+from analysis.visualization import Plot
 import fdata.api as api
 
 
@@ -97,34 +98,3 @@ class GoldenDeadCross(Strategy):
 
         return cond
 
-
-bb = BollingerBand()
-gd = GoldenDeadCross()
-# df_indi = bb.set_sub_indicators()
-# df_cond = bb.get_condition_df(df_indi)
-# df_position = bb.get_position_df(df_cond)
-# df_sig = bb.get_trading_signal_df(df_position)
-# df_algo = bb.execute_algorithm()
-# df_backtest = bb.backtest()
-
-df_indi = gd.set_sub_indicators()
-df_cond = gd.get_condition_df(df_indi)
-df_position = gd.get_position_df(df_cond)
-df_sig = gd.get_trading_signal_df(df_position)
-df_algo = gd.execute_algorithm()
-df_backtest = gd.backtest()
-#
-# fig = bb.init_fig(secondary_y=False)
-# fig = bb.vis_algo(fig, df_algo, vis_indi=False)
-# bb.fig_show(fig, html=False)
-fig = gd.init_fig(2,1)
-# gd.add_secondary_y(fig,2,1)
-
-fig = gd.vis_value(fig, df_indi["value"], 2,1)
-fig = gd.vis_sub_indicator(fig, df_indi, 1,1)
-
-
-# fig = gd.vis_backtest(fig, df_algo, df_backtest, vis_indi=True, secondary_y=True)
-
-# gd.update_secondary_y(fig, row=1, col=1, secondary_y=False)
-gd.fig_show(fig, html=False)
