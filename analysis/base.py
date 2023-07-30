@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from pandas.api.types import is_list_like
-from analysis.visualization import Plot
+from analysis.visualization.plotly_lib import Plot
 import numpy as np
 
 
@@ -108,6 +108,11 @@ class Backtest():
 
         return df_backtest
 
+    def _add_compound_rtrn(self, df_backtest):
+        df_backtest["compound_rtrn"] = (df_backtest["rtrn"]+1).cumprod()
+
+        return df_backtest
+
     def set_cost(self, tax=0.002, sell_fee=0.00015, buy_fee=0.00015, slippage=0):
         self.sell_cost = tax+sell_fee+slippage
         self.buy_cost = buy_fee+slippage
@@ -154,6 +159,7 @@ class Backtest():
             df_backtest.index = range(len(df_backtest))
         df_backtest = self._add_rtrn(df_backtest)
         df_backtest = self._add_acc_rtrn(df_backtest)
+        df_backtest = self._add_compound_rtrn(df_backtest)
 
         return df_backtest
 
@@ -394,6 +400,16 @@ class Visualize():
                                rows=rows,
                                cols=cols,
                                y2=y2)
+
+        fig = Plot().line_plot(fig,
+                               x=df_backtest["exit_date"],
+                               y=df_backtest["compound_rtrn"],
+                               name="compound_rtrn",
+                               mark=True,
+                               rows=rows,
+                               cols=cols,
+                               y2=y2)
+
         fig = Plot().bar_chart(fig,
                                x=df_backtest["entry_date"],
                                y=df_backtest["rtrn"],
@@ -407,7 +423,7 @@ class Visualize():
         return fig
 
     def vis_backtest(self, fig, df_algo, df_backtest, vis_indi=True):
-        fig = self.vis_trading_signal(fig, df_algo, rows=1, cols=1)
+        fig = self.vis_trading_signal(fig, df_algo, vis_indi, rows=1, cols=1)
         self._add_backtest_trading_arrow(fig, df_backtest)
         fig = self.vis_rtrn(fig, df_backtest, rows=1, cols=1, y2=True)
         fig = self._xaxis_datetime_range_break(fig, df_algo.index)

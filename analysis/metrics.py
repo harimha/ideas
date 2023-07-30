@@ -1,136 +1,64 @@
-class Backtest():
-    def __init__(self):
-        pass
+import fdata.api as api
+import pandas as pd
+from analysis.strategies import GoldenDeadCross, BollingerBand
+from analysis.visualization.plotly_lib import Plot
+from datetime import datetime
 
-def backtest(data, func):
-    df = func()
-    data_lst = []
-    base_price = None
-    flag = None
-    state_sell = {"date": [], "price": [], "rtrn": [], "max_rtrn": [], "min_rtrn": []}
-    state_buy = {"date": [], "price": [],"rtrn": [], "max_rtrn": [], "min_rtrn": []}
-    for i in range(len(df)):
-        data_lst.append(df.iloc[i]["price"])
-        if df.iloc[i]["signal"] == "buy":
-            if flag is None:
-                data_lst = []
-                flag = df.iloc[i]["signal"]
-                base_price = df.iloc[i]["price"]
-                state_buy["date"].append(df.iloc[i]["date"])
-                state_buy["price"].append(base_price)
-            else:
-                max_rtrn = base_price / min(data_lst) - 1
-                min_rtrn = base_price / max(data_lst) - 1
-                re = base_price/df.iloc[i]["price"]- 1
-                state_sell["rtrn"].append(re)
-                state_sell["max_rtrn"].append(max_rtrn)
-                state_sell["min_rtrn"].append(min_rtrn)
+# 모든 종목에 대해 청산 수익 rtrn에 대한 통계적 검증
+# date, rtrn
 
-                data_lst = []
-                flag = df.iloc[i]["signal"]
-                base_price = df.iloc[i]["price"]
-                state_buy["date"].append(df.iloc[i]["date"])
-                state_buy["price"].append(base_price)
+# mdd
 
-        elif df.iloc[i]["signal"] == "sell":
-            if flag is None:
-                data_lst = []
-                flag = df.iloc[i]["signal"]
-                base_price = df.iloc[i]["price"]
-                state_sell["date"].append(df.iloc[i]["date"])
-                state_sell["price"].append(base_price)
-
-            else:
-                max_rtrn = max(data_lst)/base_price -1
-                min_rtrn = min(data_lst)/base_price -1
-                re = df.iloc[i]["price"]/base_price - 1
-                state_buy["rtrn"].append(re)
-                state_buy["max_rtrn"].append(max_rtrn)
-                state_buy["min_rtrn"].append(min_rtrn)
-
-                data_lst = []
-                flag = df.iloc[i]["signal"]
-                base_price = df.iloc[i]["price"]
-                state_sell["date"].append(df.iloc[i]["date"])
-                state_sell["price"].append(base_price)
-        else:
+def rtrn_data(amount):
+    df_stock = api.stock_name("KOSPI").iloc[:amount]
+    i = 1
+    rtrn = []
+    for name in df_stock:
+        print(f"{i} / {len(df_stock)}")
+        i += 1
+        try:
+            df = api.stock_c(name, "20070101", "20090101")
+            gdc = BollingerBand(df, name)
+            df_backtest = gdc.backtest()
+            rtrn_back = list(df_backtest["rtrn"])
+            rtrn += rtrn_back
+        except:
             continue
-
-    if df["state"][-1:].iloc[0]:
-        state_buy["date"].pop()
-        state_buy["price"].pop()
-    else:
-        state_sell["date"].pop()
-        state_sell["price"].pop()
-
-    df_buy = pd.DataFrame(state_buy)
-    df_sell = pd.DataFrame(state_sell)
-
-    return df_buy, df_sell
+    return rtrn
 
 
 
 
+rtrn = rtrn_data(200)
+df = pd.DataFrame({"rtrn":rtrn})
+df["cumsum"] = df.cumsum()
+fig = Plot().init_fig()
+fig = Plot().line_plot(fig, x=df.index, y=df["cumsum"])
+Plot().fig_show(fig, html=False)
 
-class Metrics():
-    def __init__(self):
-        pass
+len(rtrn)
+sum(rtrn)
 
-    def mdd(self, data):
-        df = data.copy()
-        state_sell = {"date": [], "mdd": []}
-        state_buy = {"date": [], "mdd": []}
-        data_lst = []
-        base_price = None
-        flag = None
+# import plotly.express as px
+# fig = px.histogram(x=rtrn, nbins=50)
+# fig.show()
+# fig = px.box(y=rtrn)
+# fig.show()
 
-        for i in range(len(df)):
-            data_lst.append(df.iloc[i]["price"])
-            if df.iloc[i]["signal"] == "buy":
-                if flag is None:
-                    data_lst = []
-                    flag = df.iloc[i]["signal"]
-                    state_buy["date"].append(df.iloc[i]["date"])
-                    base_price = df.iloc[i]["price"]
-                else:
-                    flag = df.iloc[i]["signal"]
-                    mdd = base_price / max(data_lst) - 1
-                    state_sell["mdd"].append(mdd)
-
-                    data_lst = []
-                    state_buy["date"].append(df.iloc[i]["date"])
-                    base_price = df.iloc[i]["price"]
-            elif df.iloc[i]["signal"] == "sell":
-                if flag is None:
-                    data_lst = []
-                    flag = df.iloc[i]["signal"]
-                    state_sell["date"].append(df.iloc[i]["date"])
-                    base_price = df.iloc[i]["price"]
-                else:
-                    flag = df.iloc[i]["signal"]
-                    mdd = min(data_lst) / base_price - 1
-                    state_buy["mdd"].append(mdd)
-
-                    data_lst = []
-                    state_sell["date"].append(df.iloc[i]["date"])
-                    base_price = df.iloc[i]["price"]
-            else:
-                continue
-
-        if df["state"][-1:].iloc[0]:
-            state_buy["date"].pop()
-        else:
-            state_sell["date"].pop()
-
-        df_buy = pd.DataFrame(state_buy)
-        df_sell = pd.DataFrame(state_sell)
-
-        buy_mdd = df_buy["mdd"].min()
-        sell_mdd = df_sell["mdd"].min()
-        print(f"buy_mdd : {round(buy_mdd,2)}\nsell_mdd : {round(sell_mdd,2)} ")
-
-        return df_buy, df_sell, buy_mdd, sell_mdd
+# 무작위 선정
+# 기간마다 특성이 다르니까 기간별로 강건한지
+# rtrn 은 한번 매매 진입에 따른 수익임
+# rtrn을 모두 더했을때 +의 정도
+# 개수가 많아질수록 rtrn이 선형적으로 증가하는지
+# 상한가,하한가 종목은 매수,매도 불가능 한 것 고려
 
 
-metrics = Metrics()
-df_buy, df_sell, buy_mdd, sell_mdd  = metrics.mdd(df)
+
+# parameter, strategy 마다 result 결과 통계적 데이터 셋 유지
+# 이후 통계적으로 해당 데이터 분석
+# 해당 전략의 유용성 metric 구성
+# 결론 -> 해당 전략이 유효한지 아닌지 파악
+# 유효하다면 어떤 metric?
+# plotly 너무 느려서, matplotlib으로 다시 최적화
+# data backtest 다시 최적화
+

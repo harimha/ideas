@@ -43,7 +43,7 @@ class Figure():
     def fig_show(self, fig, name=None, html=True):
         if html:
             now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            fig.write_html(f"html/{name}_{now}.html")
+            fig.write_html(f"analysis/plot/{name}_{now}.html")
         else:
             fig.show()
 

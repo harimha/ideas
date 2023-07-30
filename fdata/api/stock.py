@@ -1,5 +1,12 @@
 import fdata.db.api as db
 
+def stock_name(market="KOSPI"):
+    obj = db.stock.StockCode()
+    df = obj.read_db(obj.columns)
+    df = df.loc[df["market_eng_name"]==market, "stock_name"]
+    df.index = range(len(df))
+
+    return df
 
 def stock_per(stock_name, sdate=None, edate=None):
     obj = db.stock.StockPER_PBR_DIV()

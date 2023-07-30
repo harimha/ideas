@@ -1,4 +1,4 @@
-from analysis.visualization import Plot
+from analysis.visualization.plotly_lib import Plot
 
 class Indicator():
 
