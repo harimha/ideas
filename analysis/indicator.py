@@ -11,6 +11,27 @@ def bollinger_band(df_raw, value_column, windows=20, upper_k=2, lower_k=2):
 
     return df_indi
 
+def ema(df_raw, value_column, *windows):
+    df_indi = df_raw.copy().rename(columns={value_column:"value"})
+    for window in windows:
+        df_indi[f"ema{window}"] = df_indi["value"].ewm(span=window).mean()
+
+    return df_indi
+
+def std(df_raw, value_column, *windows):
+    df_indi = df_raw.copy().rename(columns={value_column:"value"})
+    for window in windows:
+        df_indi[f"std{window}"] = df_indi["value"].rolling(window).std()
+
+    return df_indi
+
+def estd(df_raw, value_column, *windows):
+    df_indi = df_raw.copy().rename(columns={value_column:"value"})
+    for window in windows:
+        df_indi[f"estd{window}"] = df_indi["value"].ewm(span=window).std()
+
+    return df_indi
+
 def sma(df_raw, value_column, *windows):
     df_indi = df_raw.copy().rename(columns={value_column:"value"})
     for window in windows:
