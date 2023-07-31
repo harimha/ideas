@@ -1,5 +1,5 @@
 from analysis.base import Algorithm, Backtest, Visualize
-from analysis.indicator import Indicator
+from analysis.indicator import sma, bollinger_band, up_trend
 import fdata.api as api
 
 
@@ -38,7 +38,7 @@ class BollingerBand(Strategy):
         super().set_params(windows=windows, upper_k=upper_k, lower_k=lower_k)
 
     def set_sub_indicators(self):
-        df_indi = Indicator().bollinger_band(self.df_raw, **self.params)
+        df_indi = bollinger_band(self.df_raw, self.column, **self.params)
         df_indi.dropna(inplace=True)
 
         return df_indi
@@ -72,7 +72,7 @@ class GoldenDeadCross(Strategy):
         super().set_params(short=short, long=long)
 
     def set_sub_indicators(self):
-        df_indi = Indicator().sma(self.df_raw, *self.params.values())
+        df_indi = sma(self.df_raw, self.column, *self.params.values())
         df_indi.dropna(inplace=True)
 
         return df_indi
@@ -94,6 +94,57 @@ class GoldenDeadCross(Strategy):
 
     def _exit_sell_condition(self, df_indi):
         cond = df_indi[f"sma{self.params['short']}"] >= df_indi[f"sma{self.params['long']}"]
+
+        return cond
+
+
+class UpTrend(Strategy):
+    def __init__(self, df_raw=None, column=None, rate=1.005):
+        super().__init__(df_raw, column, rate=rate)
+
+    def set_params(self, rate):
+        super().set_params(rate=rate)
+
+    def set_sub_indicators(self):
+        df_indi = up_trend(self.df_raw, self.column, *self.params.values())
+
+        count = 0
+        counts = []
+        for i in range(len(df_indi)):
+            if df_indi["indi2"].iloc[i]:
+                count += 1
+            else:
+                count = 0
+            counts.append(count)
+        df_indi["count"] = counts
+
+        up = []
+        for i in range(len(df_indi)):
+            up.append(False)
+            if df_indi.iloc[i]["count"] >= 10:
+                up[i - 10:] = [True] * 11
+        df_indi["up"] = up
+        df_indi=df_indi[["value","indi","up"]]
+
+        return df_indi
+
+    def _entry_buy_condition(self, df_indi):
+        cond = df_indi["up"]
+
+        return cond
+
+    def _entry_sell_condition(self, df_indi):
+        cond = df_indi["up"]==False
+
+        return cond
+
+    def _exit_buy_condition(self, df_indi):
+        cond = df_indi["up"]==False
+
+        return cond
+
+    def _exit_sell_condition(self, df_indi):
+        cond = df_indi["up"]
 
         return cond
 

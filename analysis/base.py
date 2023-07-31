@@ -8,25 +8,20 @@ from analysis.visualization.plotly_lib import Plot
 import numpy as np
 
 
-class Algorithm(ABC):
+class Algorithm():
 
-    @abstractmethod
     def set_sub_indicators(self):
         pass
 
-    @abstractmethod
     def _entry_buy_condition(self, df_indi):
         pass
 
-    @abstractmethod
     def _entry_sell_condition(self, df_indi):
         pass
 
-    @abstractmethod
     def _exit_buy_condition(self, df_indi):
         pass
 
-    @abstractmethod
     def _exit_sell_condition(self, df_indi):
         pass
 

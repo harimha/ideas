@@ -3,6 +3,7 @@ from pandas.api.types import is_list_like
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+import pandas as pd
 
 
 class Figure():
@@ -23,6 +24,9 @@ class Figure():
 
     def init_fig(self, rows=1, cols=1, specs=None):
         fig = make_subplots(rows=rows, cols=cols, specs=specs)
+        fig = self._set_background_color(fig, "white")
+        fig.update_xaxes(gridcolor="lightgray")
+        fig.update_yaxes(gridcolor="lightgray")
 
         return fig
 
@@ -37,6 +41,15 @@ class Figure():
         fig = self._set_background_color(fig, "white")
         fig.update_xaxes(gridcolor="lightgray")
         fig.update_yaxes(gridcolor="lightgray")
+
+        return fig
+
+    def xaxis_datetime_range_break(self, fig, dt_series):
+        dt_all = pd.date_range(start=dt_series[0], end=dt_series[-1])
+        dt_breaks = [day for day in dt_all if not day in dt_series]
+        fig.update_xaxes(
+            rangebreaks=[dict(values=dt_breaks)]
+        )
 
         return fig
 
@@ -76,7 +89,7 @@ class Plot(Figure):
 
         return fig
 
-    def bar_chart(self, fig, x, y, text, width, offset, color=None, name=None, rows=1, cols=1, y2=False):
+    def bar_chart(self, fig, x, y, text=None, width=None, offset=None, color=None, name=None, rows=1, cols=1, y2=False):
         fig.add_trace(go.Bar(x=x,
                              y=y,
                              text=text,
@@ -85,7 +98,26 @@ class Plot(Figure):
                              offset=offset,
                              opacity=0.5,
                              textposition="outside",
+                             marker=dict(color=color),
                              textangle=0), row=rows, col=cols, secondary_y=y2)
+
+        return fig
+
+
+    def histogram(self, fig, x, nbins=None, prob=False, cumulative=False, name=None, rows=1, cols=1, y2=False):
+        if prob:
+            prob = "probability"
+        else:
+            prob = None
+        fig.add_trace(go.Histogram(x=x,
+                                   xbins=nbins,
+                                   name=name,
+                                   histnorm=prob,
+                                   cumulative={"direction": "increasing",
+                                               "enabled": cumulative}),
+                      row=rows,
+                      col=cols,
+                      secondary_y=y2)
 
         return fig
 

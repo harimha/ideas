@@ -1,5 +1,23 @@
 import fdata.db.api as db
 
+
+def kospi_common_stock():
+    obj = db.stock.StockBasicInfo()
+    df = obj.read_db(obj.columns)
+    df = df.loc[(df["시장구분"]=="KOSPI") & (df["주식종류"]=="보통주")]
+    df.index = range(len(df))
+
+    return df
+
+
+def stock_info(stock_name):
+    obj= db.stock.StockBasicInfo()
+    df = obj.read_db(obj.columns)
+    scode = db.stock.name_to_code(stock_name)[1]
+    df = df.loc[df["단축코드"]==scode]
+
+    return df
+
 def stock_name(market="KOSPI"):
     obj = db.stock.StockCode()
     df = obj.read_db(obj.columns)

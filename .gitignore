@@ -1,7 +1,7 @@
 *.html
 *.csv
 *.log
-note/
+
 html/
 .idea/
 secrets.txt
