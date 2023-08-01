@@ -90,6 +90,10 @@ df_sell = sell_point(df, 0.2, 0.03)
 # df = np.log(df)
 # df_buy = np.log(df_buy)
 # df_sell = np.log(df_sell)
+
+
+
+
 df_macd = macd(np.log(df), "value", 20, 60)
 df_macd2 = df_macd[["macd_20_60"]]
 df_macd_macd = macd(df_macd2, "macd_20_60", 1, 9)

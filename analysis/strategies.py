@@ -1,6 +1,7 @@
 from analysis.base import Algorithm, Backtest, Visualize
-from analysis.indicator import sma, bollinger_band, up_trend
+from analysis.indicator import sma, bollinger_band, up_trend, macd
 import fdata.api as api
+import numpy as np
 
 
 class Strategy(Algorithm, Backtest, Visualize):
@@ -148,3 +149,51 @@ class UpTrend(Strategy):
 
         return cond
 
+class MACD(Strategy):
+    def __init__(self, df_raw=None, column=None, short=20, long=60, ima=9, ema=True):
+        super().__init__(df_raw, column, short=short, long=long, ima=ima, ema=ema)
+
+    def set_params(self, short, long, ima, ema):
+        '''
+        이후 파라미터 변경시 활용하는 용도
+        '''
+        super().set_params(short=short, long=long, ima=ima, ema=ema)
+
+    def set_sub_indicators(self):
+        df_indi = macd(np.log(self.df_raw), self.column, **self.params)
+        df_indi = df_indi[["value", f"macd_{self.params['short']}_{self.params['long']}", "ima_9"]]
+        df_indi["value"] = self.df_raw["value"]
+        df_indi.dropna(inplace=True)
+
+        return df_indi
+
+
+    def _entry_buy_condition(self, df_indi):
+
+        cond1 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"] >= df_indi["ima_9"]
+        cond2 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"].shift(1) < df_indi["ima_9"].shift(1)
+        cond3 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"].shift(1)<=-0.1
+        cond = cond1 & cond2 & cond3
+
+        return cond
+
+    def _entry_sell_condition(self, df_indi):
+        cond1 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"] <= df_indi["ima_9"]
+        cond2 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"].shift(1) > df_indi["ima_9"].shift(1)
+        cond3 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"].shift(1)>=0.1
+        cond = cond1 & cond2 & cond3
+        return cond
+
+    def _exit_buy_condition(self, df_indi):
+        cond1 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"] <= df_indi["ima_9"]
+        cond2 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"].shift(1) > df_indi["ima_9"].shift(1)
+        cond3 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"].shift(1) >= 0.1
+        cond = cond1 & cond2 & cond3
+        return cond
+
+    def _exit_sell_condition(self, df_indi):
+        cond1 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"] >= df_indi["ima_9"]
+        cond2 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"].shift(1) < df_indi["ima_9"].shift(1)
+        cond3 = df_indi[f"macd_{self.params['short']}_{self.params['long']}"].shift(1) <= -0.1
+        cond = cond1 & cond2 & cond3
+        return cond
