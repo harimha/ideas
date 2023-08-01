@@ -18,6 +18,23 @@ def ema(df_raw, value_column, *windows):
 
     return df_indi
 
+def macd(df_raw, value_column, short=20, long=60, ima=9, ema=True):
+    if ema:
+        df_indi = df_raw.copy().rename(columns={value_column: "value"})
+        df_indi[f"ema{short}"] = df_indi["value"].ewm(span=short).mean()
+        df_indi[f"ema{long}"] = df_indi["value"].ewm(span=long).mean()
+        df_indi[f"macd_{short}_{long}"] = df_indi[f"ema{short}"]-df_indi[f"ema{long}"]
+        df_indi[f"ima_{ima}"] = df_indi[f"macd_{short}_{long}"].ewm(span=ima).mean()
+    else:
+        df_indi = df_raw.copy().rename(columns={value_column: "value"})
+        df_indi[f"sma{short}"] = df_indi["value"].rolling(window=short).mean()
+        df_indi[f"sma{long}"] = df_indi["value"].rolling(window=long).mean()
+        df_indi[f"macd_{short}_{long}"] = df_indi[f"sma{short}"] - df_indi[f"sma{long}"]
+        df_indi[f"ima_{ima}"] = df_indi[f"macd_{short}_{long}"].rolling(window=ima).mean()
+
+    return df_indi
+
+
 def std(df_raw, value_column, *windows):
     df_indi = df_raw.copy().rename(columns={value_column:"value"})
     for window in windows:

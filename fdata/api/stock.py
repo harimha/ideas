@@ -1,5 +1,16 @@
 import fdata.db.api as db
 
+def stock_hlm(stock_name, sdate=None, edate=None):
+    '''
+    고가, 저가, middle price
+    '''
+    obj = db.stock.StockOHLCV_NAVER()
+    df = obj.read_db(stock_name, ["일자", "고가", "저가"], sdate, edate)
+    df["mid"] = (df["고가"]+df["저가"])/2
+    df = df.set_index("일자")
+    df = df.rename(columns={"고가":"high","저가":"low"})
+
+    return df
 
 def kospi_common_stock():
     obj = db.stock.StockBasicInfo()
@@ -35,6 +46,7 @@ def stock_per(stock_name, sdate=None, edate=None):
 def stock_ohlcv(stock_name, sdate=None, edate=None):
     obj = db.stock.StockOHLCV_NAVER()
     df= obj.read_db(stock_name, obj.columns, sdate, edate)
+    df = df.loc[~(df == 0).any(axis=1)] # data 0을 가진 것 제거
     df = df.set_index("일자")
 
     return df

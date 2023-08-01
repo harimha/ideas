@@ -21,171 +21,171 @@ import numpy as np
 # data backtest 다시 최적화
 
 #
-df = api.stock_c("현대차", "20100101", "20230701")
-df = np.log10(df)
-df = ema(df, "현대차", 20)
-df = std(df, "value", 20)
-df["upper"] = df["ema20"]+2*df["std20"]
-df["lower"] = df["ema20"]-2*df["std20"]
-df.dropna(inplace=True)
-
-fig = Plot().init_fig()
-fig = Plot().line_plot(fig, x=df.index, y=df["value"], name="value")
-fig = Plot().line_plot(fig, x=df.index, y=df["ema20"], name="ema20")
-fig = Plot().line_plot(fig, x=df.index, y=df["upper"], name="upper")
-fig = Plot().line_plot(fig, x=df.index, y=df["lower"], name="lower")
-fig = Plot().xaxis_datetime_range_break(fig, df.index)
-Plot().fig_show(fig)
-
-
-
-# 동적으로 window 사이즈를 변화시키는 mean, std를 구하고 볼린져밴드를 만든다
-# 방향전환시 하향추세는 local max부터 시작, 상승추세는 local min 부터 시작
-# 방향전환은 반대쪽 볼린저밴드를 돌파했을 때 부터 반대방향으로 인식하고 계산
-# 초기값
-# 선형으로 인식하기 위해 log사용
-
-df = api.stock_c("현대차", "20100101", "20230701")
-df = df.rename(columns={"현대차":"value"})
+# df = api.stock_c("현대차", "20100101", "20230701")
 # df = np.log10(df)
-# 초기화 변수
-position = "nothing"
-count = 0
-val = []
-mean_lst = []
-std_lst = []
-upper_lst = []
-lower_lst = []
-position_lst = []
-
-for i in range(len(df)):
-    data = df.iloc[i]["value"]
-    # 초기화
-    if position == "nothing":
-        val.append(data)
-        count +=1 # val에 담긴 데이터 개수
-        if count >= 20:
-            # mean = np.mean(val)
-            mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
-            std = np.std(val)
-            upper = mean + 1.5 * std
-            lower = mean - 1.5 * std
-            if data >=upper:
-                position = "long"
-                local_min= min(val[-20:])
-                index = val.index(local_min)
-                val = val[index:]
-                count = len(val)
-                mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
-                std = np.std(val)
-                upper = mean + 1.5 * std
-                lower = mean - 1.5 * std
-                mean_lst.append(mean)
-                std_lst.append(std)
-                upper_lst.append(upper)
-                lower_lst.append(lower)
-                position_lst.append(position)
-                continue
-            elif data <= lower:
-                position = "short"
-                local_max = max(val[-20:])
-                index = val.index(local_max)
-                val = val[index:]
-                count = len(val)
-                mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
-                std = np.std(val, ddof=1)
-                upper = mean + 1.5 * std
-                lower = mean - 1.5 * std
-                mean_lst.append(mean)
-                std_lst.append(std)
-                upper_lst.append(upper)
-                position_lst.append(position)
-                continue
-        else:
-            mean = None
-            std = None
-            upper = None
-            lower = None
-
-    # 초기화 이후
-    if position == "long":
-        val.append(data)
-        count +=1 # val에 담긴 데이터 개수
-        if data <= lower:
-            position = "short"
-            if count >= 20:
-                local_max = max(val[-20:])
-            else:
-                local_max = max(val)
-            index = val.index(local_max)
-            val = val[index:]
-            mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
-            std = np.std(val)
-            upper = mean + 1.5 * std
-            lower = mean - 1.5 * std
-            mean_lst.append(mean)
-            std_lst.append(std)
-            upper_lst.append(upper)
-            lower_lst.append(lower)
-            position_lst.append(position)
-
-            continue
-
-        else:
-            mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
-            std = np.std(val)
-            upper = mean + 1.5 * std
-            lower = mean - 1.5 * std
-
-    if position == "short":
-        val.append(data)
-        count +=1 # val에 담긴 데이터 개수
-        if data >= upper:
-            position = "long"
-            if count >= 20:
-                local_min = min(val[-20:])
-            else:
-                local_min = min(val)
-            index = val.index(local_min)
-            val = val[index:]
-            mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
-            std = np.std(val)
-            upper = mean + 1.5 * std
-            lower = mean - 1.5 * std
-        else:
-            mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
-            std = np.std(val)
-            upper = mean + 1.5 * std
-            lower = mean - 1.5 * std
-            mean_lst.append(mean)
-            std_lst.append(std)
-            upper_lst.append(upper)
-            lower_lst.append(lower)
-            position_lst.append(position)
-
-            continue
-
-    mean_lst.append(mean)
-    std_lst.append(std)
-    upper_lst.append(upper)
-    lower_lst.append(lower)
-    position_lst.append(position)
-
-df["mean"] = mean_lst
-df["std"] = std_lst
-df["upper"] = upper_lst
-df["lower"] = lower_lst
-df["position"] = position_lst
-df = df.dropna()
-
-
-
-fig = Plot().init_fig()
-fig = Plot().line_plot(fig, x=df.index, y=df["value"], name="value")
-fig = Plot().line_plot(fig, x=df.index, y=df["mean"], name="mean")
-fig = Plot().line_plot(fig, x=df.index, y=df["upper"], name="upper")
-fig = Plot().line_plot(fig, x=df.index, y=df["lower"], name="lower")
-Plot().fig_show(fig)
+# df = ema(df, "현대차", 20)
+# df = std(df, "value", 20)
+# df["upper"] = df["ema20"]+2*df["std20"]
+# df["lower"] = df["ema20"]-2*df["std20"]
+# df.dropna(inplace=True)
+#
+# fig = Plot().init_fig()
+# fig = Plot().line_plot(fig, x=df.index, y=df["value"], name="value")
+# fig = Plot().line_plot(fig, x=df.index, y=df["ema20"], name="ema20")
+# fig = Plot().line_plot(fig, x=df.index, y=df["upper"], name="upper")
+# fig = Plot().line_plot(fig, x=df.index, y=df["lower"], name="lower")
+# fig = Plot().xaxis_datetime_range_break(fig, df.index)
+# Plot().fig_show(fig)
+#
+#
+#
+# # 동적으로 window 사이즈를 변화시키는 mean, std를 구하고 볼린져밴드를 만든다
+# # 방향전환시 하향추세는 local max부터 시작, 상승추세는 local min 부터 시작
+# # 방향전환은 반대쪽 볼린저밴드를 돌파했을 때 부터 반대방향으로 인식하고 계산
+# # 초기값
+# # 선형으로 인식하기 위해 log사용
+#
+# df = api.stock_c("현대차", "20100101", "20230701")
+# df = df.rename(columns={"현대차":"value"})
+# # df = np.log10(df)
+# # 초기화 변수
+# position = "nothing"
+# count = 0
+# val = []
+# mean_lst = []
+# std_lst = []
+# upper_lst = []
+# lower_lst = []
+# position_lst = []
+#
+# for i in range(len(df)):
+#     data = df.iloc[i]["value"]
+#     # 초기화
+#     if position == "nothing":
+#         val.append(data)
+#         count +=1 # val에 담긴 데이터 개수
+#         if count >= 20:
+#             # mean = np.mean(val)
+#             mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
+#             std = np.std(val)
+#             upper = mean + 1.5 * std
+#             lower = mean - 1.5 * std
+#             if data >=upper:
+#                 position = "long"
+#                 local_min= min(val[-20:])
+#                 index = val.index(local_min)
+#                 val = val[index:]
+#                 count = len(val)
+#                 mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
+#                 std = np.std(val)
+#                 upper = mean + 1.5 * std
+#                 lower = mean - 1.5 * std
+#                 mean_lst.append(mean)
+#                 std_lst.append(std)
+#                 upper_lst.append(upper)
+#                 lower_lst.append(lower)
+#                 position_lst.append(position)
+#                 continue
+#             elif data <= lower:
+#                 position = "short"
+#                 local_max = max(val[-20:])
+#                 index = val.index(local_max)
+#                 val = val[index:]
+#                 count = len(val)
+#                 mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
+#                 std = np.std(val, ddof=1)
+#                 upper = mean + 1.5 * std
+#                 lower = mean - 1.5 * std
+#                 mean_lst.append(mean)
+#                 std_lst.append(std)
+#                 upper_lst.append(upper)
+#                 position_lst.append(position)
+#                 continue
+#         else:
+#             mean = None
+#             std = None
+#             upper = None
+#             lower = None
+#
+#     # 초기화 이후
+#     if position == "long":
+#         val.append(data)
+#         count +=1 # val에 담긴 데이터 개수
+#         if data <= lower:
+#             position = "short"
+#             if count >= 20:
+#                 local_max = max(val[-20:])
+#             else:
+#                 local_max = max(val)
+#             index = val.index(local_max)
+#             val = val[index:]
+#             mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
+#             std = np.std(val)
+#             upper = mean + 1.5 * std
+#             lower = mean - 1.5 * std
+#             mean_lst.append(mean)
+#             std_lst.append(std)
+#             upper_lst.append(upper)
+#             lower_lst.append(lower)
+#             position_lst.append(position)
+#
+#             continue
+#
+#         else:
+#             mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
+#             std = np.std(val)
+#             upper = mean + 1.5 * std
+#             lower = mean - 1.5 * std
+#
+#     if position == "short":
+#         val.append(data)
+#         count +=1 # val에 담긴 데이터 개수
+#         if data >= upper:
+#             position = "long"
+#             if count >= 20:
+#                 local_min = min(val[-20:])
+#             else:
+#                 local_min = min(val)
+#             index = val.index(local_min)
+#             val = val[index:]
+#             mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
+#             std = np.std(val)
+#             upper = mean + 1.5 * std
+#             lower = mean - 1.5 * std
+#         else:
+#             mean = pd.DataFrame(val).ewm(span=len(val)).mean().iloc[-1][0]
+#             std = np.std(val)
+#             upper = mean + 1.5 * std
+#             lower = mean - 1.5 * std
+#             mean_lst.append(mean)
+#             std_lst.append(std)
+#             upper_lst.append(upper)
+#             lower_lst.append(lower)
+#             position_lst.append(position)
+#
+#             continue
+#
+#     mean_lst.append(mean)
+#     std_lst.append(std)
+#     upper_lst.append(upper)
+#     lower_lst.append(lower)
+#     position_lst.append(position)
+#
+# df["mean"] = mean_lst
+# df["std"] = std_lst
+# df["upper"] = upper_lst
+# df["lower"] = lower_lst
+# df["position"] = position_lst
+# df = df.dropna()
+#
+#
+#
+# fig = Plot().init_fig()
+# fig = Plot().line_plot(fig, x=df.index, y=df["value"], name="value")
+# fig = Plot().line_plot(fig, x=df.index, y=df["mean"], name="mean")
+# fig = Plot().line_plot(fig, x=df.index, y=df["upper"], name="upper")
+# fig = Plot().line_plot(fig, x=df.index, y=df["lower"], name="lower")
+# Plot().fig_show(fig)
 
 
 
@@ -260,3 +260,6 @@ Plot().fig_show(fig)
 # fig = Plot().line_plot(fig, x=np.linspace(1,100,100),
 #                        y=np.linspace(1,100,100),name="line", mark=True)
 # Plot().fig_show(fig, html=False)
+
+
+

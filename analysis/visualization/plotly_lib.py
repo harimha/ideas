@@ -62,12 +62,12 @@ class Figure():
 
 
 class Plot(Figure):
-    def scatter_plot(self, fig, x, y, name=None, marker: dict = None, row=1, col=1, y2=False):
+    def scatter_plot(self, fig, x, y, name=None, marker: dict = None, rows=1, cols=1, y2=False):
         fig.add_trace(go.Scatter(x=x,
                                  y=y,
                                  mode="markers",
                                  marker=marker,
-                                 name=name), row=row, col=col, secondary_y=y2)
+                                 name=name), row=rows, col=cols, secondary_y=y2)
 
         return fig
 
