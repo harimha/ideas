@@ -149,6 +149,7 @@ class UpTrend(Strategy):
 
         return cond
 
+
 class MACD(Strategy):
     def __init__(self, df_raw=None, column=None, short=20, long=60, ima=9, ema=True):
         super().__init__(df_raw, column, short=short, long=long, ima=ima, ema=ema)

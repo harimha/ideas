@@ -1,5 +1,17 @@
 import fdata.db.api as db
 
+
+def stock_hlc(stock_name, sdate=None, edate=None):
+    '''
+    고가, 저가, middle price
+    '''
+    obj = db.stock.StockOHLCV_NAVER()
+    df = obj.read_db(stock_name, ["일자", "고가", "저가", "종가"], sdate, edate)
+    df = df.loc[~(df == 0).any(axis=1)] # data 0을 가진 것 제거
+    df = df.set_index("일자")
+
+    return df
+
 def stock_hlm(stock_name, sdate=None, edate=None):
     '''
     고가, 저가, middle price

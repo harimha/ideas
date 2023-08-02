@@ -71,6 +71,7 @@ def up_trend(df_raw, value_column, rate=1.005):
 
     return df_indi
 
+
 def visualize_indicator(indicator, df_raw, value_column, y2_cols=[], *args, **kwargs):
     df_indi = indicator(df_raw, value_column, *args, **kwargs)
     x = df_indi.index
@@ -83,3 +84,57 @@ def visualize_indicator(indicator, df_raw, value_column, y2_cols=[], *args, **kw
 
     return fig
 
+
+def buy_point(df_hlc, target_rtrn=0.2, loss_cut=0.05):
+    df_indi = df_hlc.rename(columns={"종가": "value", "고가": "high", "저가": "low"}).copy()
+    cost = 0.0023
+    buy = []
+    duration = []
+    for i in range(len(df_indi)-1):
+        buy_price = df_indi.iloc[i]["value"]
+        for j in range(1, len(df_indi)-i):
+            rtrn = (df_indi.iloc[i + j]["high"] / buy_price - 1) - cost
+            loss_rtrn = (df_indi.iloc[i + j]["low"] / buy_price - 1) - cost
+
+            if loss_rtrn < -loss_cut:
+                buy.append(False)
+                duration.append(j)
+                break
+
+            if rtrn > target_rtrn:
+                buy.append(True)
+                duration.append(j)
+                break
+
+
+    df_indi = df_indi.iloc[:len(buy)]
+    df_indi["buy"] = buy
+    df_indi["duration"] = duration
+
+    return df_indi
+
+
+def sell_point(df_hlc, target_rtrn=0.2, loss_cut=0.05):
+    df_indi = df_hlc.rename(columns={"종가": "value", "고가": "high", "저가": "low"}).copy()
+    cost = 0.0023
+    sell = []
+    duration = []
+    for i in range(len(df_indi)-1):
+        sell_price = df_indi.iloc[i]["value"]
+        for j in range(1, len(df_indi)-i):
+            rtrn = (sell_price/df_indi.iloc[i + j]["low"] - 1) - 0.0023
+            loss_rtrn = (sell_price/df_indi.iloc[i + j]["high"] - 1) - 0.0023
+            if loss_rtrn < -loss_cut:
+                sell.append(False)
+                duration.append(j)
+                break
+            if rtrn > target_rtrn:
+                sell.append(True)
+                duration.append(j)
+                break
+    df_indi = df_indi.iloc[:len(sell)]
+    df_indi["sell"] = sell
+    df_indi["duration"] = duration
+
+
+    return df_indi

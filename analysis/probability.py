@@ -5,7 +5,7 @@ from analysis.indicator import sma, visualize_indicator, ema, estd, std, macd
 from analysis.visualization.plotly_lib import Plot
 from datetime import datetime
 import numpy as np
-
+import random
 
 ## 찾고자 하는 것
 # p -> q 명제 에서 q를 True로 하는 p를 찾고자 한다.
@@ -84,33 +84,56 @@ def vis_buy_sell_point(fig, df, df_buy, df_sell, rows=1, cols=1):
 
 
 
-
 # 지표 S를 가지고 정답 df_buy에 해당하는 값을 구분해 낼 수 있는지 classification 해보자
 from sklearn.ensemble import RandomForestClassifier as RFC
 from analysis.strategies import MACD
 
-df = api.stock_ohlcv("삼성전자", "20100101", "20110101")
-df = df[["종가","고가","저가"]].rename(columns={"종가":"value","고가":"high","저가":"low"})
+def data(count, sdate, edate, max_rtrn=0.2, loss_cut=0.05):
+    code_df = api.kospi_common_stock()["단축코드"]
+    sample_n = random.sample(range(len(code_df)), count)
+    code_df = code_df.loc[sample_n]
+    j = 1
+    df_X_m = pd.DataFrame()
+    df_y_m = pd.DataFrame()
+    for code in code_df:
+        print(f"{j} / {len(code_df)}")
+        j += 1
+        try:
+            name = api.scode_to_name(code)
+            df = api.stock_ohlcv(name, sdate, edate)
+            df = df[["종가", "고가", "저가"]].rename(columns={"종가": "value", "고가": "high", "저가": "low"})
+            df_buy = buy_point(df, max_rtrn, loss_cut)
+            df_indi = MACD(df, "value").set_sub_indicators()
+            y = []
+            for i in range(len(df)):
+                if df.index[i] in df_buy.index:
+                    y.append(True)
+                else:
+                    y.append(False)
+            df["y"] = y
+        except:
+            continue
+        df_X = df_indi[["macd_20_60", "ima_9"]]
+        df_X.index = range(len(df_X))
+        df_y = df[["y"]]
+        df_y.index = range(len(df_y))
 
-df_buy = buy_point(df, 0.2, 0.1)
-df_sell = sell_point(df, 0.2, 0.1)
+        df_X_m = pd.concat([df_X_m, df_X], axis=0)
+        df_y_m = pd.concat([df_y_m, df_y], axis=0)
 
-strtg = MACD(df, "value")
-df_indi = strtg.set_sub_indicators()
-y = []
-for i in range(len(df)):
-    if df.index[i] in df_buy.index:
-        y.append(True)
-    else:
-        y.append(False)
-df["y"] = y
+    df_X_m.index = range(len(df_X_m))
+    df_y_m.index = range(len(df_y_m))
+    return df_X_m, df_y_m
 
-X = df_indi[["macd_20_60","ima_9"]]
-y = df["y"]
+df_X, df_y = data(50, "20020101", "20230101")
+df_y = df_y["y"]
+df_y.tail()
+df_y.head(100)
+
 
 from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-rf = RFC()
+X_train, X_test, y_train, y_test = train_test_split(df_X, df_y, test_size=0.2)
+rf = RFC(max_depth=50, verbose=True)
 rf.fit(X_train, y_train)
 y_pred = rf.predict(X_test)
 
@@ -126,10 +149,14 @@ print(rpt)
 # 즉 x% * precision *100 은 support*precision만큼의 에 대해서 해당 수익 발생및 청산
 # y%*(1-precision)*100에 support*(1-precision)만큼의 손실 발생 및 청산임
 prec = precision_score(y_test, y_pred)
-rtrn = 0.2*prec*24
-loss = -0.1*(1-prec)*24
+rtrn = 0.2*prec*1718
+loss = -0.05*(1-prec)*1718
 print(rtrn + loss)
 # 이러한 전략에 대해서 백테스트 해보자
 
-
-
+tree_depths = []
+for tree in rf.estimators_:
+    tree_depths.append(tree.tree_.max_depth)
+tree_depths
+max(tree_depths)
+min(tree_depths)
