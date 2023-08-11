@@ -60,6 +60,18 @@ class Figure():
         else:
             fig.show()
 
+    def get_color_df(self, df, column, value_color: dict):
+        '''
+        color 변환용 값 반환
+        value_color : ex){"buy": "orange", "sell": "purple"}
+        '''
+        df_col = df.copy()
+        for value, color in value_color.items():
+            df_col.loc[df_col[column] == value, "color"] = color
+        df_col = df_col["color"]
+
+        return df_col
+
 
 class Plot(Figure):
     def scatter_plot(self, fig, x, y, name=None, marker: dict = None, rows=1, cols=1, y2=False):
