@@ -8,12 +8,10 @@ df = api.kospi_sector_c()
 df= df.dropna()
 
 # 수익률 정의
-# 30일 평균 수익률
+# 30일 수익률
 for col in df.columns[1:]:
-    df[f"{col}_d"] = df[col]/df[col].shift(1)-1
+    df[f"{col}_r"] = df[col]/df[col].shift(30)-1
 
-for col in df.columns[1:22]:
-    df[f"{col}_r"] = df[f"{col}_d"].rolling(30).mean()
 df2 = df[df.columns[22:]]
 df2 = df2.dropna()
 
@@ -21,7 +19,7 @@ df2 = df2.dropna()
 # fig = Plot().init_fig_y2()
 # fig = Plot().line_plot(fig, mark=True, x=df2.index, y=df2["의약품_r"], name="의약품")
 # fig = Plot().line_plot(fig, mark=True, x=df2.index, y=df2["제조업_r"], name="제조업")
-# fig = Plot().line_plot(fig, mark=True, x=df2.index, y=df2["전기전자_r"], name="전기전자")
+# # fig = Plot().line_plot(fig, mark=True, x=df2.index, y=df2["전기전자_r"], name="전기전자")
 # Plot().fig_show(fig, html=False)
 
 # df_eco 정의
@@ -73,15 +71,18 @@ df_m = df_m.set_index("일자_x")
 
 # heatmap
 # 산업섹터별로 경기변동에따라 평균수익률이 다름
-# df_test = df_m[['음식료품_d', '섬유의복_d', '종이목재_d', '화학_d', '의약품_d', '비금속광물_d', '철강금속_d',
-#        '기계_d', '전기전자_d', '의료정밀_d', '운수장비_d', '유통업_d', '전기가스업_d', '건설업_d',
-#        '운수창고업_d', '통신업_d', '금융업_d', '증권_d', '보험_d', '서비스업_d', '제조업_d',"state"]]
-#
+# df_test = df_m[['음식료품_r', '섬유의복_r', '종이목재_r', '화학_r', '의약품_r', '비금속광물_r', '철강금속_r',
+#        '기계_r', '전기전자_r', '의료정밀_r', '운수장비_r', '유통업_r', '전기가스업_r', '건설업_r',
+#        '운수창고업_r', '통신업_r', '금융업_r', '증권_r', '보험_r', '서비스업_r', '제조업_r',"state"]]
 # df_test.columns = ['음식료품', '섬유의복', '종이목재', '화학', '의약품', '비금속광물', '철강금속',
 #        '기계', '전기전자', '의료정밀', '운수장비', '유통업', '전기가스업', '건설업',
 #        '운수창고업', '통신업', '금융업', '증권', '보험', '서비스업', '제조업',"state"]
 #
-# df_heat = round(df_test.groupby("state").mean()*100,2)
+# df_heat = round(df_test.groupby("state").mean(),2)
+# df_heat.loc["후퇴"].mean()
+# df_heat.loc["호황"].mean()
+# df_heat.loc["침체"].mean()
+# df_heat.loc["회복"].mean()
 #
 # df_rank_head = pd.DataFrame()
 # df_rank_tail = pd.DataFrame()
@@ -101,7 +102,7 @@ df_m = df_m.set_index("일자_x")
 # df_rank_tail.index = range(1,6)
 # df_rank_head
 # df_rank_tail
-#
+
 #
 # import plotly.express as px
 # fig = px.imshow(df_heat, x=df_heat.columns, y=df_heat.index)
@@ -151,8 +152,7 @@ y_scores = rfc.predict_proba(X_test_recent)
 
 df_score = pd.DataFrame(y_scores, index=X_test_recent.index)
 df_score["state"] = y_pred_recent
-df_score
-df_score.columns = ["침체", "호황", "회복", "후퇴", "state"]
+df_score.columns = ["후퇴", "침체", "호황", "회복", "state"]
 
 y_df = pd.DataFrame({"y_pred_recent":y_pred_recent}, index=X_test_recent.index)
 df_last = pd.DataFrame({"value":df_m["value"], "state":df_m["state"]})

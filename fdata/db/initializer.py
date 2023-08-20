@@ -89,4 +89,33 @@ def initialize_sector_index_db():
         print(f"{i}/{len(i_lst)} {index_name} is stored ({execution_time}sec)")
         i+=1
 
-initialize_index_db()
+
+
+def initialize_sector_index_db_se(sdate, edate):
+    ohlcv = IndexOHLCV()
+    icode = IndexCode()
+    df = icode.read_db(icode.columns)
+    df_sector_index = df.loc[df["market_name"] == "KOSPI"][4:25]
+    i_lst = list(df_sector_index["index_name"])
+    i = 1
+    for index_name in i_lst:
+        execution_time = measure_execution_time(ohlcv.store_data_period,index_name,sdate,edate)[1]
+        print(f"{i}/{len(i_lst)} {index_name} is stored ({execution_time}sec)")
+        i+=1
+
+
+def test():
+    ohlcv = IndexOHLCV()
+    icode = IndexCode()
+    df = icode.read_db(icode.columns)
+    df_sector_index = df.loc[df["market_name"] == "KOSPI"][4:25]
+    edate = get_last_buisiness_day()
+    i_lst = ["의약품", "전기전자", "보험"]
+    i = 1
+    for index_name in i_lst:
+        sdate = get_base_date(index_name)
+        execution_time = measure_execution_time(ohlcv.store_data_period,index_name,sdate,edate)[1]
+        print(f"{i}/{len(i_lst)} {index_name} is stored ({execution_time}sec)")
+        i+=1
+
+initialize_sector_index_db()
